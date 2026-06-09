@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import LoginPage from './pages/LoginPage'
+import HomePage from './pages/HomePage'
 import MovementsPage from './pages/MovementsPage'
 import MovementFormPage from './pages/MovementFormPage'
 
@@ -30,10 +31,11 @@ export default function App() {
         />
         {session ? (
           <>
+            <Route path="/" element={<HomePage />} />
             <Route path="/movements" element={<MovementsPage />} />
             <Route path="/movements/new" element={<MovementFormPage />} />
             <Route path="/movements/:id/edit" element={<MovementFormPage />} />
-            <Route path="*" element={<Navigate to="/movements" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
           <Route path="*" element={<Navigate to="/login" replace />} />
