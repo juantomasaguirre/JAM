@@ -11,6 +11,8 @@ dist/
 
 # Vite
 *.local
+*.tsbuildinfo
+dev_output.txt
 
 # Editor
 .vscode/

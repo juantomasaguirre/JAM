@@ -48,12 +48,12 @@ export default function HomePage() {
 
         <button
           onClick={() => navigate('/movements/new')}
-          className="w-full bg-blue-600 rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:opacity-80 transition-opacity"
+          className="w-full bg-primary rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:opacity-80 transition-opacity"
         >
           <span className="text-2xl">＋</span>
           <div>
             <p className="text-sm font-semibold text-white">Nuevo movimiento</p>
-            <p className="text-xs text-blue-200 mt-0.5">Registrar un gasto o ingreso</p>
+            <p className="text-xs text-white/70 mt-0.5">Registrar un gasto o ingreso</p>
           </div>
         </button>
 

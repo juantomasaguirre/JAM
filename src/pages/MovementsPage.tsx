@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { getCategoryColor } from '../lib/categoryColors'
 import NavBar from '../components/NavBar'
 import BottomNav from '../components/BottomNav'
+
+interface Category {
+  id: string
+  name: string
+}
 
 interface Movement {
   id: string
@@ -12,6 +18,7 @@ interface Movement {
   amount: number
   currency: 'ARS' | 'USD'
   occurred_on: string
+  category_id: string | null
   categories: { name: string } | null
 }
 
@@ -23,7 +30,7 @@ const SCOPE_LABEL: Record<Movement['scope'], string> = {
 
 const SCOPE_COLOR: Record<Movement['scope'], string> = {
   individual: 'text-gray-400',
-  shared: 'text-blue-500',
+  shared: 'text-primary',
   loan: 'text-amber-500',
 }
 
@@ -37,11 +44,8 @@ function formatDate(dateStr: string): string {
   const d = new Date()
   d.setDate(d.getDate() - 1)
   const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-
   if (dateStr === today) return 'Hoy'
   if (dateStr === yesterday) return 'Ayer'
-
-  // parse at noon to avoid timezone shifts
   const date = new Date(dateStr + 'T12:00:00')
   return date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
@@ -65,18 +69,39 @@ function groupByDate(movements: Movement[]): [string, Movement[]][] {
 
 export default function MovementsPage() {
   const [movements, setMovements] = useState<Movement[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterCurrency, setFilterCurrency] = useState<'all' | 'ARS' | 'USD'>('all')
+  const [filterFrom, setFilterFrom] = useState('')
+  const [filterTo, setFilterTo] = useState('')
+
+  const activeFiltersCount = [
+    filterCategory !== '',
+    filterCurrency !== 'all',
+    filterFrom !== '',
+    filterTo !== '',
+  ].filter(Boolean).length
+
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from('movements')
-        .select('id, kind, scope, description, amount, currency, occurred_on, categories(name)')
-        .order('occurred_on', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      if (data) setMovements(data as unknown as Movement[])
+      const [movResult, catsResult] = await Promise.all([
+        supabase
+          .from('movements')
+          .select('id, kind, scope, description, amount, currency, occurred_on, category_id, categories(name)')
+          .order('occurred_on', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('categories')
+          .select('id, name')
+          .eq('is_archived', false)
+          .order('name'),
+      ])
+      if (movResult.data) setMovements(movResult.data as unknown as Movement[])
+      if (catsResult.data) setCategories(catsResult.data)
       setLoading(false)
     }
     load()
@@ -86,14 +111,43 @@ export default function MovementsPage() {
     await supabase.auth.signOut()
   }
 
-  const grouped = groupByDate(movements)
+  function clearFilters() {
+    setFilterCategory('')
+    setFilterCurrency('all')
+    setFilterFrom('')
+    setFilterTo('')
+  }
+
+  const filtered = movements.filter((m) => {
+    if (filterCategory && m.category_id !== filterCategory) return false
+    if (filterCurrency !== 'all' && m.currency !== filterCurrency) return false
+    if (filterFrom && m.occurred_on < filterFrom) return false
+    if (filterTo && m.occurred_on > filterTo) return false
+    return true
+  })
+
+  const grouped = groupByDate(filtered)
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       <NavBar
         title="Movimientos"
         right={
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              aria-label="Filtrar"
+              className="relative text-gray-400 hover:text-gray-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M3.792 2.938A49.069 49.069 0 0112 2.25c2.797 0 5.54.236 8.209.688a1.857 1.857 0 011.541 1.836v1.044a3 3 0 01-.879 2.121l-6.182 6.182a1.5 1.5 0 00-.439 1.061v2.927a3 3 0 01-1.658 2.684l-1.5.75a3 3 0 01-4.342-2.684V15.19a1.5 1.5 0 00-.44-1.061L3.879 7.898A3 3 0 013 5.778V4.714c0-.9.630-1.683 1.792-1.776z" clipRule="evenodd" />
+              </svg>
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => navigate('/import')}
               aria-label="Importar CSV"
@@ -105,7 +159,7 @@ export default function MovementsPage() {
             </button>
             <button
               onClick={() => navigate('/movements/new')}
-              className="text-blue-600 text-2xl font-light leading-none pb-0.5"
+              className="text-primary text-2xl font-light leading-none pb-0.5"
               aria-label="Nuevo movimiento"
             >
               +
@@ -114,17 +168,85 @@ export default function MovementsPage() {
         }
       />
 
+      {/* Filter panel */}
+      {showFilters && (
+        <div className="bg-white border-b border-gray-100 px-4 py-3 space-y-3">
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+          >
+            <option value="">Todas las categorías</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+
+          <div className="flex gap-2">
+            {(['all', 'ARS', 'USD'] as const).map((c) => (
+              <button
+                key={c}
+                onClick={() => setFilterCurrency(c)}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                  filterCurrency === c
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white text-gray-500 border-gray-200'
+                }`}
+              >
+                {c === 'all' ? 'Todas' : c}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1">
+              <p className="text-xs text-gray-400">Desde</p>
+              <input
+                type="date"
+                value={filterFrom}
+                onChange={(e) => setFilterFrom(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              />
+            </div>
+            <div className="flex-1 space-y-1">
+              <p className="text-xs text-gray-400">Hasta</p>
+              <input
+                type="date"
+                value={filterTo}
+                onChange={(e) => setFilterTo(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              />
+            </div>
+          </div>
+
+          {activeFiltersCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center pt-16 text-gray-400 text-sm">Cargando…</div>
-      ) : movements.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center pt-16 gap-3">
-          <p className="text-gray-400 text-sm">Sin movimientos todavía.</p>
-          <button
-            onClick={() => navigate('/movements/new')}
-            className="text-blue-600 text-sm font-medium"
-          >
-            Agregar el primero
-          </button>
+          {movements.length === 0 ? (
+            <>
+              <p className="text-gray-400 text-sm">Sin movimientos todavía.</p>
+              <button
+                onClick={() => navigate('/movements/new')}
+                className="text-primary text-sm font-medium"
+              >
+                Agregar el primero
+              </button>
+            </>
+          ) : (
+            <p className="text-gray-400 text-sm">Ningún movimiento coincide con los filtros.</p>
+          )}
         </div>
       ) : (
         <div className="pb-10">
@@ -141,12 +263,14 @@ export default function MovementsPage() {
                 >
                   <div className="flex-1 min-w-0 mr-3">
                     <p className="text-sm font-medium text-gray-900 truncate">{m.description}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {m.categories?.name ?? 'Sin categoría'}
-                      {' · '}
-                      <span className={SCOPE_COLOR[m.scope]}>
-                        {SCOPE_LABEL[m.scope]}
-                      </span>
+                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getCategoryColor(m.categories?.name) }}
+                      />
+                      <span className="truncate">{m.categories?.name ?? 'Sin categoría'}</span>
+                      <span>·</span>
+                      <span className={SCOPE_COLOR[m.scope]}>{SCOPE_LABEL[m.scope]}</span>
                     </p>
                   </div>
                   <span

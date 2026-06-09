@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { getMonthlyAvgMep, convert, formatAmount, lastDayOfMonth } from '../lib/fx'
+import { getCategoryColor } from '../lib/categoryColors'
 import NavBar from '../components/NavBar'
 
 interface MonthSlot {
@@ -37,6 +38,7 @@ function buildMonthSlots(): MonthSlot[] {
 
 export default function CategoryEvolutionPage() {
   const { id } = useParams<{ id: string }>()
+
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const categoryName = searchParams.get('name') ?? 'Categoría'
@@ -190,7 +192,7 @@ export default function CategoryEvolutionPage() {
                     labelStyle={{ fontSize: 12, color: '#6b7280' }}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
-                  <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="total" fill={getCategoryColor(categoryName)} radius={[4, 4, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -206,8 +208,8 @@ export default function CategoryEvolutionPage() {
                   <div className="flex items-center gap-3">
                     <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-400 rounded-full"
-                        style={{ width: `${(total / maxVal) * 100}%` }}
+                        className="h-full rounded-full"
+                        style={{ width: `${(total / maxVal) * 100}%`, backgroundColor: getCategoryColor(categoryName) }}
                       />
                     </div>
                     <span className="text-sm font-medium text-gray-800 w-28 text-right">
@@ -220,7 +222,7 @@ export default function CategoryEvolutionPage() {
 
             <button
               onClick={() => navigate(-1)}
-              className="text-sm text-blue-600 font-medium px-1"
+              className="text-sm text-primary font-medium px-1"
             >
               ← Volver al dashboard
             </button>

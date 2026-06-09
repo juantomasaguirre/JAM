@@ -233,7 +233,7 @@ export default function MovementFormPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="ej. Almuerzo, supermercado…"
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -251,7 +251,7 @@ export default function MovementFormPage() {
               placeholder="0"
               min="0"
               step="any"
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div className="space-y-1.5">
@@ -283,7 +283,7 @@ export default function MovementFormPage() {
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">Sin categoría</option>
             {filteredCategories.map((c) => (
@@ -301,7 +301,7 @@ export default function MovementFormPage() {
             type="date"
             value={occurredOn}
             onChange={(e) => setOccurredOn(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -314,7 +314,7 @@ export default function MovementFormPage() {
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Seleccioná...</option>
               {profiles.map((p) => (
@@ -331,7 +331,7 @@ export default function MovementFormPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-blue-600 text-white py-3.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-opacity active:opacity-80"
+          className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-opacity active:opacity-80"
         >
           {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Guardar movimiento'}
         </button>

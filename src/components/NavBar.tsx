@@ -15,7 +15,7 @@ export default function NavBar({ title, backTo, showBack, right }: Props) {
     <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between">
       <div className="w-20">
         {hasBack && (
-          <button onClick={handleBack} className="text-blue-600 text-sm">
+          <button onClick={handleBack} className="text-primary text-sm">
             ← Volver
           </button>
         )}

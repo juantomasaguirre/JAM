@@ -255,14 +255,14 @@ export default function ImportPage() {
             </p>
             <button
               onClick={downloadTemplate}
-              className="text-xs text-blue-600 font-medium"
+              className="text-xs text-primary font-medium"
             >
               Descargar plantilla de ejemplo →
             </button>
           </div>
 
           <label className="block cursor-pointer">
-            <div className="bg-blue-600 rounded-2xl px-5 py-4 flex items-center justify-center gap-3 active:opacity-80">
+            <div className="bg-primary rounded-2xl px-5 py-4 flex items-center justify-center gap-3 active:opacity-80">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
                 <path fillRule="evenodd" d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
               </svg>
@@ -306,7 +306,7 @@ export default function ImportPage() {
         </p>
         <button
           onClick={() => navigate('/movements')}
-          className="bg-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl active:opacity-80"
+          className="bg-primary text-white text-sm font-semibold px-6 py-3 rounded-xl active:opacity-80"
         >
           Ver movimientos
         </button>
@@ -336,7 +336,7 @@ export default function ImportPage() {
           </div>
           <button
             onClick={() => { setStep('upload'); setRows([]) }}
-            className="text-xs text-blue-600 font-medium"
+            className="text-xs text-primary font-medium"
           >
             Cambiar archivo
           </button>
@@ -384,7 +384,7 @@ export default function ImportPage() {
                   <select
                     value={row.selectedCategoryId ?? ''}
                     onChange={(e) => updateRowCategory(index, e.target.value || null)}
-                    className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Sin categoría</option>
                     {catOptions.map((c) => (
@@ -419,7 +419,7 @@ export default function ImportPage() {
           <button
             onClick={handleImport}
             disabled={importing}
-            className="w-full bg-blue-600 text-white text-sm font-semibold px-5 py-4 rounded-2xl active:opacity-80 disabled:opacity-50"
+            className="w-full bg-primary text-white text-sm font-semibold px-5 py-4 rounded-2xl active:opacity-80 disabled:opacity-50"
           >
             {importing ? 'Importando…' : `Importar ${validCount} movimiento${validCount !== 1 ? 's' : ''}`}
           </button>

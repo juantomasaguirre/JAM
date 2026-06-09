@@ -48,7 +48,7 @@ export default function BottomNav() {
             key={item.path}
             onClick={() => navigate(item.path)}
             className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors ${
-              active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+              active ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             {item.icon}
