@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import NavBar from '../components/NavBar'
+import BottomNav from '../components/BottomNav'
 
 interface Movement {
   id: string
@@ -88,7 +89,7 @@ export default function MovementsPage() {
   const grouped = groupByDate(movements)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-16">
       <NavBar
         title="Movimientos"
         right={
@@ -159,6 +160,8 @@ export default function MovementsPage() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </div>
   )
 }

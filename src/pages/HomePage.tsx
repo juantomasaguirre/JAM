@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import BottomNav from '../components/BottomNav'
 
 export default function HomePage() {
   const [displayName, setDisplayName] = useState('')
@@ -25,7 +26,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 pt-10 pb-6">
         <p className="text-sm text-gray-400 mb-1">Bienvenido,</p>
@@ -66,6 +67,8 @@ export default function HomePage() {
           Cerrar sesión
         </button>
       </div>
+
+      <BottomNav />
     </div>
   )
 }
