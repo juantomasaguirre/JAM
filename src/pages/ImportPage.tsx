@@ -279,6 +279,18 @@ export default function ImportPage() {
           {fileError && (
             <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{fileError}</p>
           )}
+
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-xs font-semibold text-amber-800">
+              ¿Importando historial de Tricount o Splitwise?
+            </p>
+            <button
+              onClick={() => navigate('/import/historical')}
+              className="text-xs text-amber-700 underline mt-1"
+            >
+              Usar el importador de historial →
+            </button>
+          </div>
         </div>
       </div>
     )

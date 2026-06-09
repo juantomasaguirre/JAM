@@ -5,7 +5,7 @@ const EXPENSE_KEYWORDS: [string[], string][] = [
   [['alquiler', 'expensas', 'consorcio'], 'Alquiler y expensas'],
   [
     ['luz', 'gas', 'agua', 'internet', 'telefono', 'teléfono', 'claro', 'personal',
-      'movistar', 'directv', 'fibertel', 'cablevision', 'telecom', 'servicio'],
+      'movistar', 'directv', 'fibertel', 'cablevision', 'telecom', 'servicio', 'factura'],
     'Servicios',
   ],
   [
@@ -14,27 +14,31 @@ const EXPENSE_KEYWORDS: [string[], string][] = [
     'Suscripciones',
   ],
   [
-    ['uber', 'cabify', 'taxi', 'subte', 'sube', 'colectivo', 'tren', 'nafta', 'ypf',
+    ['uber', 'didi', 'cabify', 'taxi', 'subte', 'sube', 'colectivo', 'tren', 'nafta', 'ypf',
       'shell', 'axion', 'puma', 'combustible', 'estacionamiento', 'peaje', 'remis',
       'transporte'],
     'Transporte',
   ],
   [
     ['supermercado', 'mercado', 'jumbo', 'carrefour', 'coto', 'dia', 'disco', 'walmart',
-      'almacen', 'almacén', 'verduleria', 'verdulería', 'panaderia', 'panadería',
-      'carniceria', 'carnicería', 'fruteria', 'frutería', 'kiosco'],
+      'almacen', 'almacén', 'verduleria', 'verdulería', 'verdu', 'panaderia', 'panadería',
+      'carniceria', 'carnicería', 'fruteria', 'frutería', 'kiosco', 'polleria', 'pollería',
+      'dietética', 'dietetica', 'rotisería', 'rotiseria', 'fiambrería', 'fiambreria',
+      'barrio chino'],
     'Comida y mercado',
   ],
   [
     ['restaurant', 'restaurante', 'rappi', 'pedidos ya', 'pedidos', 'delivery',
-      'cafe', 'café', 'bar', 'pizza', 'sushi', 'burger', 'mcdonalds', 'starbucks',
+      'cafe', 'café', 'bar', 'pizza', 'sushi', 'sushu', 'burger', 'hamburgues',
+      'mcdonalds', 'starbucks', 'mostaza', 'wok', 'empanada', 'sanguche',
       'cine', 'teatro', 'concierto', 'boliche', 'salida'],
     'Salidas y ocio',
   ],
   [
     ['farmacia', 'farmacity', 'medico', 'médico', 'doctor', 'clinica', 'clínica',
       'hospital', 'medicina', 'dentista', 'oculista', 'psicologo', 'psicóloga',
-      'psicóloga', 'prepaga', 'obra social', 'turno'],
+      'psicóloga', 'prepaga', 'obra social', 'turno', 'funcional', 'gimnasio',
+      'gym', 'pilates', 'yoga', 'crossfit', 'kinesio'],
     'Salud',
   ],
   [
