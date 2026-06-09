@@ -5,7 +5,20 @@
 
 ---
 
-### 2026-06-05 — Stack: web app (PWA) + Supabase + Vercel/Netlify
+### 2026-06-09 — Toggle de tipo de dólar descartado; MEP fijo en todo el MVP
+El dashboard usa MEP como único tipo de cambio para conversión ARS/USD. No se construye
+el toggle oficial/blue/MEP/CCL. **Motivo:** decisión ejecutiva del dueño; complejidad
+de UI vs valor marginal bajo para dos usuarios con el mismo contexto de referencia.
+El criterio 5 del PRD fue actualizado en consecuencia.
+
+---
+
+### 2026-06-09 — [ACTUALIZA la de abajo] Deploy migrado a Cloudflare Pages
+Se abandonó Netlify y se migró a Cloudflare Pages. URL: `jam-f7u.pages.dev`, conectado
+al repo `juantomasaguirre/JAM`, redeploy automático en cada push a main.
+**Motivo:** free tier más generoso que Netlify.
+
+### 2026-06-05 — Stack: web app (PWA) + Supabase + Cloudflare Pages
 Una sola base de código React que corre en navegador de celu y PC, instalable como
 PWA. Backend gestionado en Supabase. **Motivo:** funciona en ambos dispositivos sin
 apps nativas ni app stores; free tier; menos superficie de mantenimiento.

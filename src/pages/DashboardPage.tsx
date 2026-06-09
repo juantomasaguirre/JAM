@@ -17,6 +17,14 @@ interface Movement {
   categories: { name: string } | null
 }
 
+interface AccumulatedMovement {
+  id: string
+  scope: 'shared' | 'loan'
+  amount: number
+  currency: 'ARS' | 'USD'
+  paid_by: string | null
+}
+
 interface Profile {
   id: string
   display_name: string
@@ -29,6 +37,26 @@ const CHART_COLORS = [
   '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#14b8a6',
 ]
 
+function localToday(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function generateMonthOptions(): { year: number; month: number; label: string }[] {
+  const options: { year: number; month: number; label: string }[] = []
+  const now = new Date()
+  let y = now.getFullYear()
+  let m = now.getMonth() + 1
+  while (y > 2025 || (y === 2025 && m >= 1)) {
+    options.push({ year: y, month: m, label: `${MONTH_NAMES[m - 1]} ${y}` })
+    m--
+    if (m < 1) { m = 12; y-- }
+  }
+  return options
+}
+
+const MONTH_OPTIONS = generateMonthOptions()
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const now = new Date()
@@ -38,11 +66,63 @@ export default function DashboardPage() {
   const [displayCurrency, setDisplayCurrency] = useState<'ARS' | 'USD'>('ARS')
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar')
 
+  // Monthly data
   const [movements, setMovements] = useState<Movement[]>([])
   const [avgMepRate, setAvgMepRate] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Accumulated balance data (loaded once, refreshed after settlement)
+  const [allSharedMovements, setAllSharedMovements] = useState<AccumulatedMovement[]>([])
+  const [latestMepRate, setLatestMepRate] = useState<number | null>(null)
+  const [liquidacionesIds, setLiquidacionesIds] = useState<{ expense: string | null; income: string | null }>({ expense: null, income: null })
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [currentUserId, setCurrentUserId] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [householdId, setHouseholdId] = useState('')
+  const [allLoading, setAllLoading] = useState(true)
+  const [settling, setSettling] = useState(false)
+  const [settleError, setSettleError] = useState('')
+
+  useEffect(() => {
+    async function loadAccumulated() {
+      const [sharedResult, rateResult, catsResult, profilesResult, userResult] = await Promise.all([
+        supabase
+          .from('movements')
+          .select('id, scope, amount, currency, paid_by')
+          .in('scope', ['shared', 'loan']),
+        supabase
+          .from('fx_rates')
+          .select('sell')
+          .eq('dollar_type', 'mep')
+          .order('rate_date', { ascending: false })
+          .limit(1)
+          .single(),
+        supabase
+          .from('categories')
+          .select('id, kind')
+          .eq('name', 'Liquidaciones'),
+        supabase.from('profiles').select('id, display_name, household_id'),
+        supabase.auth.getUser(),
+      ])
+
+      if (sharedResult.data) setAllSharedMovements(sharedResult.data as unknown as AccumulatedMovement[])
+      setLatestMepRate(rateResult.data?.sell ?? null)
+
+      const expCat = catsResult.data?.find((c: { kind: string }) => c.kind === 'expense')
+      const incCat = catsResult.data?.find((c: { kind: string }) => c.kind === 'income')
+      setLiquidacionesIds({ expense: expCat?.id ?? null, income: incCat?.id ?? null })
+
+      const uid = userResult.data.user?.id ?? ''
+      if (profilesResult.data) {
+        setProfiles(profilesResult.data.map(({ id, display_name }: { id: string; display_name: string }) => ({ id, display_name })))
+        const me = (profilesResult.data as { id: string; household_id: string }[]).find((p) => p.id === uid)
+        if (me) setHouseholdId(me.household_id)
+      }
+      setCurrentUserId(uid)
+      setAllLoading(false)
+    }
+    loadAccumulated()
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -51,7 +131,7 @@ export default function DashboardPage() {
       const dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
       const dateTo = lastDayOfMonth(year, month)
 
-      const [movResult, ratesResult, profilesResult, userResult] = await Promise.all([
+      const [movResult, ratesResult] = await Promise.all([
         supabase
           .from('movements')
           .select('id, kind, scope, amount, currency, paid_by, category_id, categories(name)')
@@ -63,13 +143,10 @@ export default function DashboardPage() {
           .eq('dollar_type', 'mep')
           .gte('rate_date', dateFrom)
           .lte('rate_date', dateTo),
-        supabase.from('profiles').select('id, display_name'),
-        supabase.auth.getUser(),
       ])
 
       let mepAvg = getMonthlyAvgMep(ratesResult.data ?? [])
 
-      // Carry-forward: if no rates this month, use the most recent prior rate
       if (mepAvg === null) {
         const { data: prior } = await supabase
           .from('fx_rates')
@@ -84,29 +161,67 @@ export default function DashboardPage() {
 
       setMovements((movResult.data as unknown as Movement[]) ?? [])
       setAvgMepRate(mepAvg)
-      setProfiles(profilesResult.data ?? [])
-      setCurrentUserId(userResult.data.user?.id ?? '')
       setLoading(false)
     }
     load()
-  }, [year, month])
+  }, [year, month, refreshKey])
 
   function toDisplay(amount: number, currency: 'ARS' | 'USD'): number {
     return convert(amount, currency, displayCurrency, avgMepRate) ?? amount
   }
 
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
+  const otherUser = profiles.find((p) => p.id !== currentUserId)
 
-  function goMonth(dir: -1 | 1) {
-    let m = month + dir
-    let y = year
-    if (m < 1) { m = 12; y-- }
-    if (m > 12) { m = 1; y++ }
-    setYear(y)
-    setMonth(m)
+  let accumulatedBalance = 0
+  for (const m of allSharedMovements) {
+    const val = convert(m.amount, m.currency, displayCurrency, latestMepRate) ?? m.amount
+    const share = m.scope === 'loan' ? val : val / 2
+    if (m.paid_by === currentUserId) accumulatedBalance += share
+    else accumulatedBalance -= share
   }
 
-  // Totals
+  async function handleSettle() {
+    if (settling || Math.abs(accumulatedBalance) < 1 || !householdId || !otherUser) return
+    setSettling(true)
+    setSettleError('')
+
+    const isOwing = accumulatedBalance < 0
+    const absBalance = Math.abs(accumulatedBalance)
+    const settlePaidBy = isOwing ? currentUserId : otherUser.id
+    const settleKind: 'expense' | 'income' = isOwing ? 'expense' : 'income'
+    const settleCategoryId = isOwing ? liquidacionesIds.expense : liquidacionesIds.income
+
+    const { error } = await supabase.from('movements').insert({
+      household_id: householdId,
+      created_by: currentUserId,
+      owner_id: currentUserId,
+      scope: 'loan',
+      kind: settleKind,
+      category_id: settleCategoryId,
+      description: 'Saldo de deuda',
+      amount: Math.round(absBalance * 100) / 100,
+      currency: displayCurrency,
+      occurred_on: localToday(),
+      paid_by: settlePaidBy,
+    })
+
+    if (error) {
+      setSettleError(error.message)
+      setSettling(false)
+      return
+    }
+
+    const { data } = await supabase
+      .from('movements')
+      .select('id, scope, amount, currency, paid_by')
+      .in('scope', ['shared', 'loan'])
+    if (data) setAllSharedMovements(data as unknown as AccumulatedMovement[])
+
+    setRefreshKey((k) => k + 1)
+    setSettling(false)
+  }
+
+  // Monthly totals
   const totalExpenses = movements
     .filter((m) => m.kind === 'expense')
     .reduce((sum, m) => sum + toDisplay(m.amount, m.currency), 0)
@@ -116,21 +231,6 @@ export default function DashboardPage() {
     .reduce((sum, m) => sum + toDisplay(m.amount, m.currency), 0)
 
   const balance = totalIncome - totalExpenses
-
-  // Shared balance: positive = other owes me, negative = I owe other
-  const otherUser = profiles.find((p) => p.id !== currentUserId)
-  let sharedBalance = 0
-  const hasSharedMovements = movements.some((m) => m.scope === 'shared' || m.scope === 'loan')
-
-  movements
-    .filter((m) => m.scope === 'shared' || m.scope === 'loan')
-    .forEach((m) => {
-      const val = toDisplay(m.amount, m.currency)
-      // loan: payer is owed 100%; shared: payer is owed 50%
-      const share = m.scope === 'loan' ? val : val / 2
-      if (m.paid_by === currentUserId) sharedBalance += share
-      else sharedBalance -= share
-    })
 
   // Category breakdown (expenses only)
   const catMap: Record<string, { value: number; id: string | null }> = {}
@@ -163,28 +263,77 @@ export default function DashboardPage() {
       />
 
       <div className="p-4 space-y-4 max-w-lg mx-auto">
+
+        {/* Accumulated shared balance */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+            Saldo compartido
+          </p>
+          {allLoading ? (
+            <p className="text-sm text-gray-400">Cargando…</p>
+          ) : Math.abs(accumulatedBalance) < 1 ? (
+            <p className="text-sm text-gray-600 font-medium">Están al día ✓</p>
+          ) : accumulatedBalance > 0 ? (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-900">
+                <span className="font-semibold">{otherUser?.display_name}</span>
+                {' te debe '}
+                <span className="font-bold text-green-600">
+                  {formatAmount(accumulatedBalance, displayCurrency)}
+                </span>
+              </p>
+              <button
+                onClick={handleSettle}
+                disabled={settling}
+                className="w-full bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:opacity-80 transition-opacity"
+              >
+                {settling ? 'Registrando…' : 'Saldar deuda'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-900">
+                {'Le debés '}
+                <span className="font-bold text-red-500">
+                  {formatAmount(Math.abs(accumulatedBalance), displayCurrency)}
+                </span>
+                {' a '}
+                <span className="font-semibold">{otherUser?.display_name}</span>
+              </p>
+              <button
+                onClick={handleSettle}
+                disabled={settling}
+                className="w-full bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:opacity-80 transition-opacity"
+              >
+                {settling ? 'Registrando…' : 'Saldar deuda'}
+              </button>
+            </div>
+          )}
+          {settleError && <p className="text-xs text-red-500 mt-1">{settleError}</p>}
+        </div>
+
         {/* Month selector */}
-        <div className="flex items-center justify-between">
-          <button onClick={() => goMonth(-1)} className="p-2 text-gray-500 hover:text-gray-800 text-lg">
-            ←
-          </button>
-          <span className="text-base font-semibold text-gray-900">
-            {MONTH_NAMES[month - 1]} {year}
-          </span>
-          <button
-            onClick={() => goMonth(1)}
-            disabled={isCurrentMonth}
-            className="p-2 text-gray-500 hover:text-gray-800 disabled:opacity-30 text-lg"
+        <div className="flex justify-center">
+          <select
+            value={`${year}-${month}`}
+            onChange={(e) => {
+              const [y, m] = e.target.value.split('-').map(Number)
+              setYear(y)
+              setMonth(m)
+            }}
+            className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           >
-            →
-          </button>
+            {MONTH_OPTIONS.map(({ year: y, month: m, label }) => (
+              <option key={`${y}-${m}`} value={`${y}-${m}`}>{label}</option>
+            ))}
+          </select>
         </div>
 
         {loading ? (
           <div className="flex justify-center pt-8 text-gray-400 text-sm">Cargando…</div>
         ) : (
           <>
-            {/* Summary card */}
+            {/* Monthly summary */}
             <div className="bg-white rounded-2xl p-4 space-y-3 shadow-sm">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-500">Gastos</span>
@@ -205,35 +354,6 @@ export default function DashboardPage() {
                 </span>
               </div>
             </div>
-
-            {/* Shared balance card */}
-            {hasSharedMovements && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Saldo compartido
-                </p>
-                {Math.abs(sharedBalance) < 1 ? (
-                  <p className="text-sm text-gray-600 font-medium">Están al día ✓</p>
-                ) : sharedBalance > 0 ? (
-                  <p className="text-sm text-gray-900">
-                    <span className="font-semibold">{otherUser?.display_name}</span>
-                    {' te debe '}
-                    <span className="font-bold text-green-600">
-                      {formatAmount(sharedBalance, displayCurrency)}
-                    </span>
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-900">
-                    {'Le debés '}
-                    <span className="font-bold text-red-500">
-                      {formatAmount(Math.abs(sharedBalance), displayCurrency)}
-                    </span>
-                    {' a '}
-                    <span className="font-semibold">{otherUser?.display_name}</span>
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Category breakdown */}
             {categoryData.length > 0 ? (
@@ -266,9 +386,7 @@ export default function DashboardPage() {
                         key={name}
                         onClick={() =>
                           id &&
-                          navigate(
-                            `/dashboard/categories/${id}?name=${encodeURIComponent(name)}`,
-                          )
+                          navigate(`/dashboard/categories/${id}?name=${encodeURIComponent(name)}`)
                         }
                         className="w-full text-left group"
                       >
@@ -307,9 +425,7 @@ export default function DashboardPage() {
                         onClick={(_, index) => {
                           const item = categoryData[index]
                           if (item?.id) {
-                            navigate(
-                              `/dashboard/categories/${item.id}?name=${encodeURIComponent(item.name)}`,
-                            )
+                            navigate(`/dashboard/categories/${item.id}?name=${encodeURIComponent(item.name)}`)
                           }
                         }}
                         style={{ cursor: 'pointer' }}
@@ -318,13 +434,9 @@ export default function DashboardPage() {
                           <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip
-                        formatter={(val) => formatAmount(val as number, displayCurrency)}
-                      />
+                      <Tooltip formatter={(val) => formatAmount(val as number, displayCurrency)} />
                       <Legend
-                        formatter={(value) =>
-                          value.length > 18 ? value.slice(0, 16) + '…' : value
-                        }
+                        formatter={(value) => value.length > 18 ? value.slice(0, 16) + '…' : value}
                       />
                     </PieChart>
                   </ResponsiveContainer>

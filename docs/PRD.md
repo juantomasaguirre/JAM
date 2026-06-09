@@ -74,5 +74,5 @@ Esto NO se construye en Fase 1. Si surge la tentación, se propone, no se hace:
 2. Un usuario NO puede ver los movimientos individuales del otro (verificado).
 3. Cargar un gasto compartido y ver reflejado el saldo entre ambos.
 4. Importar un CSV de movimientos y verlos categorizados.
-5. El dashboard muestra los mismos números correctamente en ARS y en USD, y el cambio
-   de tipo de dólar reconvierte de forma coherente usando cotizaciones por fecha.
+5. El dashboard muestra los mismos números correctamente en ARS y en USD usando MEP
+   como tipo de cambio fijo. (El toggle de tipo de dólar fue descartado — ver DECISIONS.md.)
