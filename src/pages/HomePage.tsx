@@ -56,6 +56,17 @@ export default function HomePage() {
             <p className="text-xs text-blue-200 mt-0.5">Registrar un gasto o ingreso</p>
           </div>
         </button>
+
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:bg-gray-50 transition-colors"
+        >
+          <span className="text-2xl">📊</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Dashboard</p>
+            <p className="text-xs text-gray-400 mt-0.5">Resumen y análisis por categoría</p>
+          </div>
+        </button>
       </div>
 
       {/* Footer */}
