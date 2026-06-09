@@ -8,6 +8,7 @@ import MovementsPage from './pages/MovementsPage'
 import MovementFormPage from './pages/MovementFormPage'
 import DashboardPage from './pages/DashboardPage'
 import CategoryEvolutionPage from './pages/CategoryEvolutionPage'
+import ImportPage from './pages/ImportPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/movements/:id/edit" element={<MovementFormPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/categories/:id" element={<CategoryEvolutionPage />} />
+            <Route path="/import" element={<ImportPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
