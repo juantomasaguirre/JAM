@@ -300,6 +300,10 @@ export default function DashboardPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={90}
+                        label={({ percent }: { percent?: number }) =>
+                          (percent ?? 0) >= 0.05 ? `${((percent ?? 0) * 100).toFixed(0)}%` : ''
+                        }
+                        labelLine={false}
                         onClick={(_, index) => {
                           const item = categoryData[index]
                           if (item?.id) {
