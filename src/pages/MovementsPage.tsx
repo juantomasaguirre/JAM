@@ -6,12 +6,24 @@ import NavBar from '../components/NavBar'
 interface Movement {
   id: string
   kind: 'expense' | 'income'
-  scope: 'individual' | 'shared'
+  scope: 'individual' | 'shared' | 'loan'
   description: string
   amount: number
   currency: 'ARS' | 'USD'
   occurred_on: string
   categories: { name: string } | null
+}
+
+const SCOPE_LABEL: Record<Movement['scope'], string> = {
+  individual: 'Mío',
+  shared: 'Nuestro',
+  loan: 'Préstamo',
+}
+
+const SCOPE_COLOR: Record<Movement['scope'], string> = {
+  individual: 'text-gray-400',
+  shared: 'text-blue-500',
+  loan: 'text-amber-500',
 }
 
 function localToday(): string {
@@ -120,8 +132,8 @@ export default function MovementsPage() {
                     <p className="text-xs text-gray-400 mt-0.5">
                       {m.categories?.name ?? 'Sin categoría'}
                       {' · '}
-                      <span className={m.scope === 'shared' ? 'text-blue-500' : ''}>
-                        {m.scope === 'individual' ? 'Individual' : 'Compartido'}
+                      <span className={SCOPE_COLOR[m.scope]}>
+                        {SCOPE_LABEL[m.scope]}
                       </span>
                     </p>
                   </div>

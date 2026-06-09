@@ -26,7 +26,7 @@ export default function MovementFormPage() {
 
   // Form state
   const [kind, setKind] = useState<'expense' | 'income'>('expense')
-  const [scope, setScope] = useState<'individual' | 'shared'>('individual')
+  const [scope, setScope] = useState<'individual' | 'shared' | 'loan'>('individual')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState<'ARS' | 'USD'>('ARS')
@@ -110,18 +110,26 @@ export default function MovementFormPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    const resolvedPaidBy =
+      scope === 'loan' ? user.id :
+      scope === 'shared' ? paidBy :
+      null
+
     if (isEdit) {
+      // For loan, omit paid_by from update — DB keeps original value (satisfies paid_by = created_by constraint)
+      const updatePayload: Record<string, unknown> = {
+        kind,
+        category_id: categoryId || null,
+        description: description.trim(),
+        amount: parsedAmount,
+        currency,
+        occurred_on: occurredOn,
+      }
+      if (scope !== 'loan') updatePayload.paid_by = resolvedPaidBy
+
       const { error: updateError } = await supabase
         .from('movements')
-        .update({
-          kind,
-          category_id: categoryId || null,
-          description: description.trim(),
-          amount: parsedAmount,
-          currency,
-          occurred_on: occurredOn,
-          paid_by: scope === 'shared' ? paidBy : null,
-        })
+        .update(updatePayload)
         .eq('id', id!)
 
       if (updateError) { setError(updateError.message); setSaving(false); return }
@@ -145,7 +153,7 @@ export default function MovementFormPage() {
         amount: parsedAmount,
         currency,
         occurred_on: occurredOn,
-        paid_by: scope === 'shared' ? paidBy : null,
+        paid_by: resolvedPaidBy,
       })
 
       if (insertError) { setError(insertError.message); setSaving(false); return }
@@ -196,7 +204,11 @@ export default function MovementFormPage() {
 
         {/* Scope — read-only in edit mode to avoid constraint complexity */}
         <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white">
-          {(['individual', 'shared'] as const).map((s) => (
+          {([
+            ['individual', 'Mío'],
+            ['shared',     'Nuestro'],
+            ['loan',       'Tuyo'],
+          ] as const).map(([s, label]) => (
             <button
               key={s}
               type="button"
@@ -206,7 +218,7 @@ export default function MovementFormPage() {
                 scope === s ? 'bg-gray-800 text-white' : 'text-gray-400'
               } ${isEdit ? 'opacity-60 cursor-default' : 'hover:bg-gray-50'}`}
             >
-              {s === 'individual' ? 'Individual' : 'Compartido'}
+              {label}
             </button>
           ))}
         </div>
@@ -293,7 +305,7 @@ export default function MovementFormPage() {
           />
         </div>
 
-        {/* Paid by — shared movements only */}
+        {/* Paid by — shared movements only; loan always pays current user automatically */}
         {scope === 'shared' && (
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
