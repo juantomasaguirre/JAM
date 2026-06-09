@@ -5,7 +5,8 @@ const EXPENSE_KEYWORDS: [string[], string][] = [
   [['alquiler', 'expensas', 'consorcio'], 'Alquiler y expensas'],
   [
     ['luz', 'gas', 'agua', 'internet', 'telefono', 'teléfono', 'claro', 'personal',
-      'movistar', 'directv', 'fibertel', 'cablevision', 'telecom', 'servicio', 'factura'],
+      'movistar', 'directv', 'fibertel', 'cablevision', 'telecom', 'servicio', 'factura',
+      'edenor', 'iplan', 'plomero', 'nomade'],
     'Servicios',
   ],
   [
@@ -20,18 +21,18 @@ const EXPENSE_KEYWORDS: [string[], string][] = [
     'Transporte',
   ],
   [
-    ['supermercado', 'mercado', 'jumbo', 'carrefour', 'coto', 'dia', 'disco', 'walmart',
-      'almacen', 'almacén', 'verduleria', 'verdulería', 'verdu', 'panaderia', 'panadería',
-      'carniceria', 'carnicería', 'fruteria', 'frutería', 'kiosco', 'polleria', 'pollería',
-      'dietética', 'dietetica', 'rotisería', 'rotiseria', 'fiambrería', 'fiambreria',
-      'barrio chino'],
+    ['super', 'chino', 'supermercado', 'mercado', 'jumbo', 'carrefour', 'coto', 'dia',
+      'disco', 'walmart', 'almacen', 'almacén', 'verduleria', 'verdulería', 'verdu',
+      'panaderia', 'panadería', 'carniceria', 'carnicería', 'fruteria', 'frutería',
+      'kiosco', 'polleria', 'pollería', 'dietética', 'dietetica', 'rotisería', 'rotiseria',
+      'fiambrería', 'fiambreria'],
     'Comida y mercado',
   ],
   [
     ['restaurant', 'restaurante', 'rappi', 'pedidos ya', 'pedidos', 'delivery',
       'cafe', 'café', 'bar', 'pizza', 'sushi', 'sushu', 'burger', 'hamburgues',
-      'mcdonalds', 'starbucks', 'mostaza', 'wok', 'empanada', 'sanguche',
-      'cine', 'teatro', 'concierto', 'boliche', 'salida'],
+      'mcdonalds', 'starbucks', 'mostaza', 'wok', 'empanada', 'sanguch', 'bakery',
+      'birr', 'growler', 'cine', 'teatro', 'concierto', 'boliche', 'salida'],
     'Salidas y ocio',
   ],
   [

@@ -29,7 +29,8 @@ interface ParseResult {
   shared50: number
   loan100: number
   liquidaciones: number
-  balance: number
+  balanceARS: number
+  usdRows: number
   catCounts: Record<string, number>
 }
 
@@ -91,7 +92,7 @@ function parseHistorical(
   const lines = text.replace(/^﻿/, '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
   const rows: HistRow[] = []
   const catCounts: Record<string, number> = {}
-  let shared50 = 0, loan100 = 0, liquidaciones = 0, balance = 0
+  let shared50 = 0, loan100 = 0, liquidaciones = 0, balanceARS = 0, usdRows = 0
 
   for (let i = 1; i < lines.length; i++) {
     const cells = parseLine(lines[i])
@@ -161,9 +162,14 @@ function parseHistorical(
 
     catCounts[catName] = (catCounts[catName] ?? 0) + 1
 
-    // Mirror DashboardPage balance formula (positive = Coni owes Juan, negative = Juan owes Coni)
+    // Mirror DashboardPage balance formula (positive = Coni owes Juan, negative = Juan owes Coni).
+    // Only accumulate ARS rows; USD amounts can't be summed directly with ARS.
     const share = scope === 'loan' ? coste : coste / 2
-    balance += paid_by === juanId ? share : -share
+    if (currency === 'ARS') {
+      balanceARS += paid_by === juanId ? share : -share
+    } else {
+      usdRows++
+    }
 
     rows.push({
       household_id: householdId,
@@ -180,7 +186,7 @@ function parseHistorical(
     })
   }
 
-  return { rows, shared50, loan100, liquidaciones, balance, catCounts }
+  return { rows, shared50, loan100, liquidaciones, balanceARS, usdRows, catCounts }
 }
 
 const BATCH_SIZE = 100
@@ -317,7 +323,7 @@ export default function ImportHistoricalPage() {
 
   // ─── Preview ─────────────────────────────────────────────────────────────────
   if (step === 'preview' && summary) {
-    const juanOwes = summary.balance < 0
+    const juanOwes = summary.balanceARS < 0
     const sortedCats = Object.entries(summary.catCounts).sort((a, b) => b[1] - a[1])
 
     return (
@@ -346,21 +352,27 @@ export default function ImportHistoricalPage() {
           </div>
 
           {/* Computed balance */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
-              Saldo calculado (solo ARS)
+          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Saldo calculado
             </p>
-            {Math.abs(summary.balance) < 1 ? (
-              <p className="text-sm text-gray-600 font-medium">Están al día</p>
+            {Math.abs(summary.balanceARS) < 1 ? (
+              <p className="text-sm text-gray-600 font-medium">Están al día en ARS</p>
             ) : juanOwes ? (
               <p className="text-sm text-gray-900">
                 Juan le debe a Coni{' '}
-                <span className="font-bold text-red-500">$ {fmt(summary.balance)}</span>
+                <span className="font-bold text-red-500">$ {fmt(summary.balanceARS)}</span>
               </p>
             ) : (
               <p className="text-sm text-gray-900">
                 Coni le debe a Juan{' '}
-                <span className="font-bold text-green-600">$ {fmt(summary.balance)}</span>
+                <span className="font-bold text-green-600">$ {fmt(summary.balanceARS)}</span>
+              </p>
+            )}
+            {summary.usdRows > 0 && (
+              <p className="text-xs text-gray-400">
+                + {summary.usdRows} movimiento{summary.usdRows !== 1 ? 's' : ''} en USD
+                (el saldo en pesos se ajusta al mostrar según la cotización histórica)
               </p>
             )}
           </div>
