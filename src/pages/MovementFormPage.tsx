@@ -171,7 +171,7 @@ export default function MovementFormPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-surface">
         <NavBar title={isEdit ? 'Editar movimiento' : 'Nuevo movimiento'} backTo="/movements" />
         <div className="flex justify-center pt-16 text-gray-400 text-sm">Cargando…</div>
       </div>
@@ -179,13 +179,13 @@ export default function MovementFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface">
       <NavBar title={isEdit ? 'Editar movimiento' : 'Nuevo movimiento'} backTo="/movements" />
 
       <form onSubmit={handleSubmit} className="p-4 space-y-5 max-w-lg mx-auto pb-10">
 
         {/* Kind */}
-        <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white">
+        <div className="flex rounded-xl overflow-hidden border border-border bg-card">
           {(['expense', 'income'] as const).map((k) => (
             <button
               key={k}
@@ -193,8 +193,8 @@ export default function MovementFormPage() {
               onClick={() => setKind(k)}
               className={`flex-1 py-3 text-sm font-semibold transition-colors ${
                 kind === k
-                  ? k === 'expense' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                  : 'text-gray-400 hover:bg-gray-50'
+                  ? k === 'expense' ? 'bg-negative text-white' : 'bg-green-500 text-white'
+                  : 'text-gray-400 hover:bg-sand'
               }`}
             >
               {k === 'expense' ? 'Gasto' : 'Ingreso'}
@@ -203,7 +203,7 @@ export default function MovementFormPage() {
         </div>
 
         {/* Scope — read-only in edit mode to avoid constraint complexity */}
-        <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white">
+        <div className="flex rounded-xl overflow-hidden border border-border bg-card">
           {([
             ['individual', 'Mío'],
             ['shared',     'Nuestro'],
@@ -216,7 +216,7 @@ export default function MovementFormPage() {
               disabled={isEdit}
               className={`flex-1 py-3 text-sm font-semibold transition-colors ${
                 scope === s ? 'bg-gray-800 text-white' : 'text-gray-400'
-              } ${isEdit ? 'opacity-60 cursor-default' : 'hover:bg-gray-50'}`}
+              } ${isEdit ? 'opacity-60 cursor-default' : 'hover:bg-sand'}`}
             >
               {label}
             </button>
@@ -233,7 +233,7 @@ export default function MovementFormPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="ej. Almuerzo, supermercado…"
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -251,21 +251,21 @@ export default function MovementFormPage() {
               placeholder="0"
               min="0"
               step="any"
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
               Moneda
             </label>
-            <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white h-[46px]">
+            <div className="flex rounded-xl overflow-hidden border border-border bg-card h-[46px]">
               {(['ARS', 'USD'] as const).map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setCurrency(c)}
                   className={`px-4 text-sm font-semibold transition-colors ${
-                    currency === c ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-50'
+                    currency === c ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-sand'
                   }`}
                 >
                   {c}
@@ -283,7 +283,7 @@ export default function MovementFormPage() {
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">Sin categoría</option>
             {filteredCategories.map((c) => (
@@ -301,7 +301,7 @@ export default function MovementFormPage() {
             type="date"
             value={occurredOn}
             onChange={(e) => setOccurredOn(e.target.value)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -314,7 +314,7 @@ export default function MovementFormPage() {
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Seleccioná...</option>
               {profiles.map((p) => (
@@ -341,7 +341,7 @@ export default function MovementFormPage() {
           <button
             type="button"
             onClick={handleDelete}
-            className="w-full py-2 text-sm text-red-400 hover:text-red-600 transition-colors"
+            className="w-full py-2 text-sm text-negative/60 hover:text-negative transition-colors"
           >
             Eliminar movimiento
           </button>

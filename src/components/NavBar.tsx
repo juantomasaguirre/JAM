@@ -12,15 +12,15 @@ export default function NavBar({ title, backTo, showBack, right }: Props) {
   const handleBack = backTo ? () => navigate(backTo) : () => navigate(-1)
   const hasBack = backTo || showBack
   return (
-    <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-10 bg-nav px-4 h-14 flex items-center justify-between">
       <div className="w-20">
         {hasBack && (
-          <button onClick={handleBack} className="text-primary text-sm">
+          <button onClick={handleBack} className="text-white/70 text-sm">
             ← Volver
           </button>
         )}
       </div>
-      <h1 className="text-base font-semibold text-gray-900">{title}</h1>
+      <h1 className="text-base font-semibold text-white">{title}</h1>
       <div className="w-20 flex justify-end">{right}</div>
     </header>
   )

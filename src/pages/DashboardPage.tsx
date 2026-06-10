@@ -256,13 +256,13 @@ export default function DashboardPage() {
   const maxCatValue = categoryData[0]?.value || 1
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16">
+    <div className="min-h-screen bg-surface pb-16">
       <NavBar
         title="Dashboard"
         right={
           <button
             onClick={() => setDisplayCurrency((c) => (c === 'ARS' ? 'USD' : 'ARS'))}
-            className="text-xs font-semibold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg"
+            className="text-xs font-semibold bg-white/15 text-white px-2.5 py-1 rounded-lg"
           >
             {displayCurrency}
           </button>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
       <div className="p-4 space-y-4 max-w-lg mx-auto">
 
         {/* Accumulated shared balance */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-card rounded-2xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
             Saldo compartido
           </p>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <p className="text-sm text-gray-900">
                 {'Le debés '}
-                <span className="font-bold text-red-500">
+                <span className="font-bold text-negative">
                   {formatAmount(Math.abs(accumulatedBalance), displayCurrency)}
                 </span>
                 {' a '}
@@ -310,13 +310,13 @@ export default function DashboardPage() {
               <button
                 onClick={handleSettle}
                 disabled={settling}
-                className="w-full bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:opacity-80 transition-opacity"
+                className="w-full bg-negative text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:opacity-80 transition-opacity"
               >
                 {settling ? 'Registrando…' : 'Saldar deuda'}
               </button>
             </div>
           )}
-          {settleError && <p className="text-xs text-red-500 mt-1">{settleError}</p>}
+          {settleError && <p className="text-xs text-negative mt-1">{settleError}</p>}
         </div>
 
         {/* Month selector */}
@@ -328,7 +328,7 @@ export default function DashboardPage() {
               setYear(y)
               setMonth(m)
             }}
-            className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+            className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >
             {MONTH_OPTIONS.map(({ year: y, month: m, label }) => (
               <option key={`${y}-${m}`} value={`${y}-${m}`}>{label}</option>
@@ -344,7 +344,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl p-4 space-y-3 shadow-sm">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-500">Gastos</span>
-                <span className="text-sm font-semibold text-red-500">
+                <span className="text-sm font-semibold text-negative">
                   − {formatAmount(totalExpenses, displayCurrency)}
                 </span>
               </div>
@@ -356,20 +356,20 @@ export default function DashboardPage() {
               </div>
               <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
                 <span className="text-sm font-semibold text-gray-700">Balance</span>
-                <span className={`text-sm font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  {balance >= 0 ? '+' : ''}{formatAmount(balance, displayCurrency)}
+                <span className={`text-sm font-bold ${balance >= 0 ? 'text-green-600' : 'text-negative'}`}>
+                  {balance >= 0 ? '+' : '−'}{formatAmount(balance, displayCurrency)}
                 </span>
               </div>
             </div>
 
             {/* Category breakdown */}
             {categoryData.length > 0 ? (
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="bg-card rounded-2xl p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
                     Gastos por categoría
                   </p>
-                  <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                  <div className="flex rounded-lg overflow-hidden border border-border">
                     {(['bar', 'pie'] as const).map((t) => (
                       <button
                         key={t}

@@ -19,8 +19,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-8">
+    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
+      <div className="w-full max-w-sm bg-card rounded-2xl shadow-sm p-8">
         <h1 className="text-2xl font-semibold text-gray-900 mb-1">JAM</h1>
         <p className="text-sm text-gray-500 mb-8">Finanzas de la casa</p>
 
@@ -32,7 +32,7 @@ export default function LoginPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-gray-900 text-white rounded-lg py-2 text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            className="bg-nav text-white rounded-lg py-2 text-sm font-medium hover:bg-primary disabled:opacity-50 transition-colors"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>

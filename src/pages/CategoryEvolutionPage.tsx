@@ -17,6 +17,8 @@ interface MonthSlot {
 interface ChartPoint {
   label: string
   total: number
+  year: number
+  month: number
 }
 
 function buildMonthSlots(): MonthSlot[] {
@@ -132,6 +134,8 @@ export default function CategoryEvolutionPage() {
         slots.map((slot) => ({
           label: slot.label,
           total: Math.round(totals[`${slot.year}-${String(slot.month).padStart(2, '0')}`] * 100) / 100,
+          year: slot.year,
+          month: slot.month,
         })),
       )
 
@@ -143,14 +147,14 @@ export default function CategoryEvolutionPage() {
   const maxVal = Math.max(...chartData.map((d) => d.total), 1)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface">
       <NavBar
         title={categoryName}
         showBack
         right={
           <button
             onClick={() => setDisplayCurrency((c) => (c === 'ARS' ? 'USD' : 'ARS'))}
-            className="text-xs font-semibold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg"
+            className="text-xs font-semibold bg-white/15 text-white px-2.5 py-1 rounded-lg"
           >
             {displayCurrency}
           </button>
@@ -166,7 +170,7 @@ export default function CategoryEvolutionPage() {
           <div className="flex justify-center pt-8 text-gray-400 text-sm">Cargando…</div>
         ) : (
           <>
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="bg-card rounded-2xl p-4 shadow-sm">
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
@@ -198,26 +202,32 @@ export default function CategoryEvolutionPage() {
             </div>
 
             {/* Monthly list */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              {[...chartData].reverse().map(({ label, total }) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0"
-                >
-                  <span className="text-sm text-gray-600 capitalize">{label}</span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${(total / maxVal) * 100}%`, backgroundColor: getCategoryColor(categoryName) }}
-                      />
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+              {[...chartData].reverse().map(({ label, total, year, month }) => {
+                const mm = String(month).padStart(2, '0')
+                const from = `${year}-${mm}-01`
+                const to = lastDayOfMonth(year, month)
+                return (
+                  <button
+                    key={label}
+                    onClick={() => navigate(`/movements?category=${id}&from=${from}&to=${to}`)}
+                    className="w-full flex items-center justify-between px-4 py-3 border-b border-sand last:border-0 text-left active:bg-sand"
+                  >
+                    <span className="text-sm text-gray-600 capitalize">{label}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-1.5 bg-sand rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${(total / maxVal) * 100}%`, backgroundColor: getCategoryColor(categoryName) }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-gray-800 w-28 text-right">
+                        {total > 0 ? formatAmount(total, displayCurrency) : '—'}
+                      </span>
                     </div>
-                    <span className="text-sm font-medium text-gray-800 w-28 text-right">
-                      {total > 0 ? formatAmount(total, displayCurrency) : '—'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                  </button>
+                )
+              })}
             </div>
 
             <button

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getCategoryColor } from '../lib/categoryColors'
 import NavBar from '../components/NavBar'
@@ -73,12 +73,15 @@ export default function MovementsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const [showFilters, setShowFilters] = useState(false)
-  const [filterCategory, setFilterCategory] = useState('')
+  const [filterCategory, setFilterCategory] = useState(searchParams.get('category') ?? '')
   const [filterCurrency, setFilterCurrency] = useState<'all' | 'ARS' | 'USD'>('all')
-  const [filterFrom, setFilterFrom] = useState('')
-  const [filterTo, setFilterTo] = useState('')
+  const [filterFrom, setFilterFrom] = useState(searchParams.get('from') ?? '')
+  const [filterTo, setFilterTo] = useState(searchParams.get('to') ?? '')
+  const [showFilters, setShowFilters] = useState(
+    Boolean(searchParams.get('category') || searchParams.get('from') || searchParams.get('to'))
+  )
 
   const activeFiltersCount = [
     filterCategory !== '',
@@ -130,7 +133,7 @@ export default function MovementsPage() {
   const grouped = groupByDate(filtered)
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16">
+    <div className="min-h-screen bg-surface pb-16">
       <NavBar
         title="Movimientos"
         right={
@@ -138,7 +141,7 @@ export default function MovementsPage() {
             <button
               onClick={() => setShowFilters((v) => !v)}
               aria-label="Filtrar"
-              className="relative text-gray-400 hover:text-gray-600"
+              className="relative text-white/70 hover:text-white"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                 <path fillRule="evenodd" d="M3.792 2.938A49.069 49.069 0 0112 2.25c2.797 0 5.54.236 8.209.688a1.857 1.857 0 011.541 1.836v1.044a3 3 0 01-.879 2.121l-6.182 6.182a1.5 1.5 0 00-.439 1.061v2.927a3 3 0 01-1.658 2.684l-1.5.75a3 3 0 01-4.342-2.684V15.19a1.5 1.5 0 00-.44-1.061L3.879 7.898A3 3 0 013 5.778V4.714c0-.9.630-1.683 1.792-1.776z" clipRule="evenodd" />
@@ -152,7 +155,7 @@ export default function MovementsPage() {
             <button
               onClick={() => navigate('/import')}
               aria-label="Importar CSV"
-              className="text-gray-400 hover:text-gray-600"
+              className="text-white/70 hover:text-white"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                 <path fillRule="evenodd" d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
@@ -160,7 +163,7 @@ export default function MovementsPage() {
             </button>
             <button
               onClick={() => navigate('/movements/new')}
-              className="text-primary text-2xl font-light leading-none pb-0.5"
+              className="text-white text-2xl font-light leading-none pb-0.5"
               aria-label="Nuevo movimiento"
             >
               +
@@ -171,11 +174,11 @@ export default function MovementsPage() {
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="bg-white border-b border-gray-100 px-4 py-3 space-y-3">
+        <div className="bg-card border-b border-border px-4 py-3 space-y-3">
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+            className="w-full border border-border rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-card"
           >
             <option value="">Todas las categorías</option>
             {categories.map((c) => (
@@ -191,7 +194,7 @@ export default function MovementsPage() {
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
                   filterCurrency === c
                     ? 'bg-primary text-white border-primary'
-                    : 'bg-white text-gray-500 border-gray-200'
+                    : 'bg-card text-gray-500 border-border'
                 }`}
               >
                 {c === 'all' ? 'Todas' : c}
@@ -206,7 +209,7 @@ export default function MovementsPage() {
                 type="date"
                 value={filterFrom}
                 onChange={(e) => setFilterFrom(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                className="w-full border border-border rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-card"
               />
             </div>
             <div className="flex-1 space-y-1">
@@ -215,7 +218,7 @@ export default function MovementsPage() {
                 type="date"
                 value={filterTo}
                 onChange={(e) => setFilterTo(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                className="w-full border border-border rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary bg-card"
               />
             </div>
           </div>
@@ -253,14 +256,14 @@ export default function MovementsPage() {
         <div className="pb-10">
           {grouped.map(([date, items]) => (
             <div key={date}>
-              <div className="px-4 py-2 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 {formatDate(date)}
               </div>
               {items.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => navigate(`/movements/${m.id}/edit`)}
-                  className="w-full bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between text-left active:bg-gray-50"
+                  className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand"
                 >
                   <div className="flex-1 min-w-0 mr-3">
                     <p className="text-sm font-medium text-gray-900 truncate">{m.description}</p>
@@ -281,7 +284,7 @@ export default function MovementsPage() {
                   </div>
                   <span
                     className={`text-sm font-semibold whitespace-nowrap ${
-                      m.kind === 'expense' ? 'text-red-500' : 'text-green-600'
+                      m.kind === 'expense' ? 'text-negative' : 'text-green-600'
                     }`}
                   >
                     {m.kind === 'expense' ? '−' : '+'} {formatAmount(m.amount, m.currency)}

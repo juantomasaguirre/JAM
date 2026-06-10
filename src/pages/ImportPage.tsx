@@ -233,15 +233,15 @@ export default function ImportPage() {
   // ─── Upload step ─────────────────────────────────────────────────────────────
   if (step === 'upload') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-surface">
         <NavBar title="Importar CSV" showBack />
         <div className="p-4 max-w-lg mx-auto space-y-4">
-          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-card rounded-2xl p-4 shadow-sm space-y-3">
             <p className="text-sm font-semibold text-gray-900">Formato esperado</p>
             <p className="text-xs text-gray-500 leading-relaxed">
               Archivo CSV con estas columnas en orden:
             </p>
-            <div className="bg-gray-50 rounded-lg p-3 font-mono text-xs text-gray-600 overflow-x-auto whitespace-nowrap">
+            <div className="bg-sand rounded-lg p-3 font-mono text-xs text-gray-600 overflow-x-auto whitespace-nowrap">
               fecha, descripcion, monto, moneda, tipo, scope
             </div>
             <ul className="text-xs text-gray-500 space-y-1">
@@ -299,7 +299,7 @@ export default function ImportPage() {
   // ─── Done step ───────────────────────────────────────────────────────────────
   if (step === 'done') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 gap-5">
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 gap-5">
         <div className="text-5xl">✅</div>
         <p className="text-lg font-bold text-gray-900 text-center">
           Se importaron {importedCount} movimiento{importedCount !== 1 ? 's' : ''}
@@ -316,11 +316,11 @@ export default function ImportPage() {
 
   // ─── Preview step ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
+    <div className="min-h-screen bg-surface pb-6">
       <NavBar title="Confirmar importación" showBack />
       <div className="p-4 max-w-lg mx-auto space-y-4">
         {/* Summary banner */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm flex justify-between items-center">
+        <div className="bg-card rounded-2xl p-4 shadow-sm flex justify-between items-center">
           <div>
             <p className="text-sm font-semibold text-gray-900">
               {rows.length} fila{rows.length !== 1 ? 's' : ''} encontrada{rows.length !== 1 ? 's' : ''}
@@ -349,7 +349,7 @@ export default function ImportPage() {
           return (
             <div
               key={index}
-              className={`bg-white rounded-2xl p-4 shadow-sm ${hasError ? 'border border-red-200' : ''}`}
+              className={`bg-card rounded-2xl p-4 shadow-sm ${hasError ? 'border border-red-200' : ''}`}
             >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 mr-3">
@@ -384,7 +384,7 @@ export default function ImportPage() {
                   <select
                     value={row.selectedCategoryId ?? ''}
                     onChange={(e) => updateRowCategory(index, e.target.value || null)}
-                    className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full text-xs text-gray-700 bg-card border border-border rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Sin categoría</option>
                     {catOptions.map((c) => (

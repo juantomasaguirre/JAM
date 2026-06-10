@@ -26,18 +26,18 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-16">
+    <div className="min-h-screen bg-surface flex flex-col pb-16">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 pt-10 pb-6">
-        <p className="text-sm text-gray-400 mb-1">Bienvenido,</p>
-        <h1 className="text-2xl font-bold text-gray-900">{displayName || '…'}</h1>
+      <div className="bg-nav px-6 pt-10 pb-6">
+        <p className="text-sm text-white/60 mb-1">Bienvenido,</p>
+        <h1 className="text-2xl font-bold text-white">{displayName || '…'}</h1>
       </div>
 
       {/* Actions */}
       <div className="flex-1 p-4 space-y-3">
         <button
           onClick={() => navigate('/movements')}
-          className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:bg-gray-50 transition-colors"
+          className="w-full bg-card border border-border rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:bg-sand transition-colors"
         >
           <span className="text-2xl">📋</span>
           <div>
@@ -59,7 +59,7 @@ export default function HomePage() {
 
         <button
           onClick={() => navigate('/dashboard')}
-          className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:bg-gray-50 transition-colors"
+          className="w-full bg-card border border-border rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:bg-sand transition-colors"
         >
           <span className="text-2xl">📊</span>
           <div>

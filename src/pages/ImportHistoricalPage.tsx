@@ -306,7 +306,7 @@ export default function ImportHistoricalPage() {
   // ─── Done ────────────────────────────────────────────────────────────────────
   if (step === 'done') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 gap-5">
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 gap-5">
         <div className="text-5xl">✅</div>
         <p className="text-lg font-bold text-gray-900 text-center">
           {importedCount} movimientos importados
@@ -327,24 +327,24 @@ export default function ImportHistoricalPage() {
     const sortedCats = Object.entries(summary.catCounts).sort((a, b) => b[1] - a[1])
 
     return (
-      <div className="min-h-screen bg-gray-50 pb-8">
+      <div className="min-h-screen bg-surface pb-8">
         <NavBar title="Confirmar importación" showBack />
         <div className="p-4 max-w-lg mx-auto space-y-4">
           {/* Totals */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-card rounded-2xl p-4 shadow-sm space-y-3">
             <p className="text-sm font-semibold text-gray-900">
               {summary.rows.length} movimientos encontrados
             </p>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-gray-50 rounded-xl p-3">
+              <div className="bg-sand rounded-xl p-3">
                 <p className="text-xl font-bold text-gray-900">{summary.shared50}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Compartidos</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-3">
+              <div className="bg-sand rounded-xl p-3">
                 <p className="text-xl font-bold text-gray-900">{summary.loan100}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Préstamos</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-3">
+              <div className="bg-sand rounded-xl p-3">
                 <p className="text-xl font-bold text-gray-900">{summary.liquidaciones}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Liquidaciones</p>
               </div>
@@ -352,7 +352,7 @@ export default function ImportHistoricalPage() {
           </div>
 
           {/* Computed balance */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-1">
+          <div className="bg-card rounded-2xl p-4 shadow-sm space-y-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
               Saldo calculado
             </p>
@@ -378,7 +378,7 @@ export default function ImportHistoricalPage() {
           </div>
 
           {/* Category breakdown */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="bg-card rounded-2xl p-4 shadow-sm">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
               Por categoría
             </p>
@@ -397,12 +397,12 @@ export default function ImportHistoricalPage() {
           )}
 
           {importing ? (
-            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+            <div className="bg-card rounded-2xl p-4 shadow-sm space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 font-medium">Importando…</span>
                 <span className="text-gray-400">{progress}%</span>
               </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-sand rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
@@ -425,10 +425,10 @@ export default function ImportHistoricalPage() {
   // ─── Upload ───────────────────────────────────────────────────────────────────
   if (step === 'upload') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-surface">
         <NavBar title="Importar historial" showBack />
         <div className="p-4 max-w-lg mx-auto space-y-4">
-          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+          <div className="bg-card rounded-2xl p-4 shadow-sm space-y-2">
             <p className="text-sm font-semibold text-gray-900">Cargar el CSV exportado</p>
             <p className="text-xs text-gray-500 font-mono break-all">
               Fecha, Descripción, Categoría, Coste, Moneda, constanzacriado, Juan Tomas Aguirre
@@ -458,10 +458,10 @@ export default function ImportHistoricalPage() {
 
   // ─── Delete ───────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface">
       <NavBar title="Importar historial" showBack />
       <div className="p-4 max-w-lg mx-auto space-y-4">
-        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+        <div className="bg-card rounded-2xl p-4 shadow-sm space-y-4">
           <p className="text-sm font-semibold text-gray-900">Paso 1: Borrar movimientos existentes</p>
 
           {existingCount === null ? (
