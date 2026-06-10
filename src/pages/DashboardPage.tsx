@@ -62,6 +62,16 @@ export default function DashboardPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [displayCurrency, setDisplayCurrency] = useState<'ARS' | 'USD'>('ARS')
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar')
+  const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
+
+  function toggleCategory(name: string) {
+    setExcludedCategories(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
 
   // Monthly data
   const [movements, setMovements] = useState<Movement[]>([])
@@ -218,18 +228,7 @@ export default function DashboardPage() {
     setSettling(false)
   }
 
-  // Monthly totals
-  const totalExpenses = movements
-    .filter((m) => m.kind === 'expense')
-    .reduce((sum, m) => sum + toDisplay(m.amount, m.currency), 0)
-
-  const totalIncome = movements
-    .filter((m) => m.kind === 'income')
-    .reduce((sum, m) => sum + toDisplay(m.amount, m.currency), 0)
-
-  const balance = totalIncome - totalExpenses
-
-  // Category breakdown (expenses only)
+  // Category breakdown (expenses only, all categories for bar chart)
   const catMap: Record<string, { value: number; id: string | null }> = {}
   movements
     .filter((m) => m.kind === 'expense')
@@ -242,6 +241,17 @@ export default function DashboardPage() {
   const categoryData = Object.entries(catMap)
     .sort(([, a], [, b]) => b.value - a.value)
     .map(([name, { value, id }]) => ({ name, value, id }))
+
+  // Monthly totals (excluded categories don't count)
+  const totalExpenses = movements
+    .filter((m) => m.kind === 'expense' && !excludedCategories.has(m.categories?.name ?? 'Sin categoría'))
+    .reduce((sum, m) => sum + toDisplay(m.amount, m.currency), 0)
+
+  const totalIncome = movements
+    .filter((m) => m.kind === 'income')
+    .reduce((sum, m) => sum + toDisplay(m.amount, m.currency), 0)
+
+  const balance = totalIncome - totalExpenses
 
   const maxCatValue = categoryData[0]?.value || 1
 
@@ -378,38 +388,55 @@ export default function DashboardPage() {
 
                 {chartType === 'bar' ? (
                   <div className="space-y-3">
-                    {categoryData.map(({ name, value, id }) => (
-                      <button
-                        key={name}
-                        onClick={() =>
-                          id &&
-                          navigate(`/dashboard/categories/${id}?name=${encodeURIComponent(name)}`)
-                        }
-                        className="w-full text-left group"
-                      >
-                        <div className="flex justify-between text-xs mb-1.5">
-                          <span className="text-gray-700 font-medium truncate mr-2 group-hover:text-primary transition-colors">
-                            {name}
-                          </span>
-                          <span className="text-gray-500 whitespace-nowrap">
-                            {formatAmount(value, displayCurrency)}
-                          </span>
+                    {categoryData.map(({ name, value, id }) => {
+                      const excluded = excludedCategories.has(name)
+                      const color = getCategoryColor(name)
+                      return (
+                        <div key={name} className="flex items-start gap-2">
+                          <button
+                            onClick={() => toggleCategory(name)}
+                            className="mt-0.5 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors"
+                            style={excluded
+                              ? { borderColor: '#D1D5DB', backgroundColor: 'white' }
+                              : { borderColor: color, backgroundColor: color }
+                            }
+                            aria-label={excluded ? `Incluir ${name}` : `Excluir ${name}`}
+                          >
+                            {!excluded && (
+                              <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
+                                <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => id && navigate(`/dashboard/categories/${id}?name=${encodeURIComponent(name)}`)}
+                            className="flex-1 min-w-0 text-left"
+                          >
+                            <div className="flex justify-between text-xs mb-1.5">
+                              <span className={`font-medium truncate mr-2 transition-colors ${excluded ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {name}
+                              </span>
+                              <span className={`whitespace-nowrap ${excluded ? 'text-gray-300' : 'text-gray-500'}`}>
+                                {formatAmount(value, displayCurrency)}
+                              </span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${(value / maxCatValue) * 100}%`, backgroundColor: excluded ? '#D1D5DB' : color }}
+                              />
+                            </div>
+                          </button>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${(value / maxCatValue) * 100}%`, backgroundColor: getCategoryColor(name) }}
-                          />
-                        </div>
-                      </button>
-                    ))}
+                      )
+                    })}
                     <p className="text-xs text-gray-300 pt-1">Tocá una categoría para ver su evolución</p>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
                       <Pie
-                        data={categoryData}
+                        data={categoryData.filter(({ name }) => !excludedCategories.has(name))}
                         dataKey="value"
                         nameKey="name"
                         cx="50%"
@@ -420,20 +447,45 @@ export default function DashboardPage() {
                         }
                         labelLine={false}
                         onClick={(_, index) => {
-                          const item = categoryData[index]
+                          const included = categoryData.filter(({ name }) => !excludedCategories.has(name))
+                          const item = included[index]
                           if (item?.id) {
                             navigate(`/dashboard/categories/${item.id}?name=${encodeURIComponent(item.name)}`)
                           }
                         }}
                         style={{ cursor: 'pointer' }}
                       >
-                        {categoryData.map((entry, i) => (
+                        {categoryData.filter(({ name }) => !excludedCategories.has(name)).map((entry, i) => (
                           <Cell key={i} fill={getCategoryColor(entry.name)} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(val) => formatAmount(val as number, displayCurrency)} />
                       <Legend
-                        formatter={(value) => value.length > 18 ? value.slice(0, 16) + '…' : value}
+                        content={() => (
+                          <div className="flex flex-wrap justify-center gap-2 mt-3">
+                            {categoryData.map(({ name }) => {
+                              const excluded = excludedCategories.has(name)
+                              const color = getCategoryColor(name)
+                              return (
+                                <button
+                                  key={name}
+                                  onClick={() => toggleCategory(name)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+                                  style={{
+                                    backgroundColor: excluded ? '#F3F4F6' : color + '26',
+                                    color: excluded ? '#D1D5DB' : color,
+                                  }}
+                                >
+                                  <span
+                                    className="w-2 h-2 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: excluded ? '#D1D5DB' : color }}
+                                  />
+                                  {name.length > 18 ? name.slice(0, 16) + '…' : name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
                       />
                     </PieChart>
                   </ResponsiveContainer>

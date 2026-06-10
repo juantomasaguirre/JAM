@@ -28,11 +28,12 @@ const SCOPE_LABEL: Record<Movement['scope'], string> = {
   loan: 'Préstamo',
 }
 
-const SCOPE_COLOR: Record<Movement['scope'], string> = {
-  individual: 'text-gray-400',
-  shared: 'text-primary',
-  loan: 'text-amber-500',
+const SCOPE_TEXT_COLOR: Record<Movement['scope'], string> = {
+  individual: '#6B7280',
+  shared: '#16a34a',
+  loan: '#d97706',
 }
+
 
 function localToday(): string {
   const d = new Date()
@@ -263,14 +264,19 @@ export default function MovementsPage() {
                 >
                   <div className="flex-1 min-w-0 mr-3">
                     <p className="text-sm font-medium text-gray-900 truncate">{m.description}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
+                    <p className="mt-1">
                       <span
-                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: getCategoryColor(m.categories?.name) }}
-                      />
-                      <span className="truncate">{m.categories?.name ?? 'Sin categoría'}</span>
-                      <span>·</span>
-                      <span className={SCOPE_COLOR[m.scope]}>{SCOPE_LABEL[m.scope]}</span>
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                        style={{ backgroundColor: getCategoryColor(m.categories?.name) + '26' }}
+                      >
+                        <span style={{ color: getCategoryColor(m.categories?.name) }}>
+                          {m.categories?.name ?? 'Sin categoría'}
+                        </span>
+                        <span style={{ color: getCategoryColor(m.categories?.name) }}>·</span>
+                        <span style={{ color: SCOPE_TEXT_COLOR[m.scope] }}>
+                          {SCOPE_LABEL[m.scope]}
+                        </span>
+                      </span>
                     </p>
                   </div>
                   <span
