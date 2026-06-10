@@ -15,11 +15,10 @@ proponerlo, no implementarlo.
 - **Cierre de fase:** ambos pueden loguearse desde celu y PC y ven una pantalla vacía
   pero propia.
 
-## Fase 1 — MVP
+## Fase 1 — MVP ✅ CERRADA (2026-06-10)
 
 - Alta/edición/baja de movimientos manuales (gasto/ingreso, individual/compartido).
 - Compartidos: pagador (`paid_by`) + división 50/50 fija. Saldo entre los dos derivado.
-- Gestión de categorías (catálogo del hogar).
 - Edge Function programado (cron diario) que puebla `fx_rates` desde DolarAPI.
 - Lógica de conversión por fecha con carry-forward.
 - Importación CSV con mapeo manual de columnas.

@@ -5,6 +5,22 @@
 
 ---
 
+### 2026-06-10 — Fase 1 cerrada
+Todos los criterios de éxito del PRD verificados: auth funcionando, aislamiento de
+privacidad confirmado, saldo compartido correcto, importación CSV operativa, y dashboard
+mostrando correctamente ARS/USD con MEP (~$1459 venta al cierre). Edge Function
+`fetch-fx-rates` deployada y cron corriendo desde 2026-06-09.
+
+---
+
+### 2026-06-10 — Gestión de categorías: solo desde dev side, sin UI en el MVP
+Las categorías se crean y modifican únicamente vía seed/migraciones por el desarrollador.
+No se construye UI de alta/baja/edición de categorías para el usuario final. **Motivo:**
+decisión del dueño; el catálogo de categorías es estable y no justifica UI extra en el MVP.
+Si se necesita agregar una categoría, se hace desde dev side con una migración o seed.
+
+---
+
 ### 2026-06-09 — Toggle de tipo de dólar descartado; MEP fijo en todo el MVP
 El dashboard usa MEP como único tipo de cambio para conversión ARS/USD. No se construye
 el toggle oficial/blue/MEP/CCL. **Motivo:** decisión ejecutiva del dueño; complejidad

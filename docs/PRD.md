@@ -33,7 +33,6 @@ un fallo crítico, no un detalle.
   - Alcance: individual o compartido.
   - Campos: monto, moneda (ARS/USD), fecha, categoría, descripción.
   - Para compartidos: quién pagó (`paid_by`). La división es **50/50 fija**.
-- **Categorías:** catálogo compartido del hogar, por tipo (gasto/ingreso).
 - **Importación por CSV** con mapeo manual de columnas (sin parsing de bancos todavía).
 - **Dashboard / análisis:**
   - Totales por período (mes en curso, meses anteriores).
