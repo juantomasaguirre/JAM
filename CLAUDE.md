@@ -74,7 +74,9 @@ El dueño del proyecto **no programa**: dirige, responde dudas y aprende. Por es
 - **Commits chicos y atómicos**, mensajes estilo conventional commits (`feat:`, `fix:`,
   `chore:`...). Un commit = un cambio entendible.
 - **Pedí confirmación antes de:** borrar datos, correr migraciones destructivas, cambiar
-  el stack, o tocar policies de seguridad.
+  el stack, tocar policies de seguridad, o hacer `git commit` / `git push`. Un "dale,
+  arranquemos" aprueba el plan de trabajo, no el commit. El commit y el push requieren
+  confirmación explícita por separado.
 - **Cuando tomemos una decisión, registrala en `docs/DECISIONS.md`** con fecha y motivo,
   así no la volvemos a discutir en cada sesión.
 - Si algo del usuario te parece equivocado o riesgoso, **decilo**. No ejecutes en

@@ -17,6 +17,8 @@ import InvestmentFormPage from './pages/InvestmentFormPage'
 import PortfolioAssetPage from './pages/PortfolioAssetPage'
 import PortfolioAssetFormPage from './pages/PortfolioAssetFormPage'
 import PortfolioTransactionFormPage from './pages/PortfolioTransactionFormPage'
+import RecurringPaymentsPage from './pages/RecurringPaymentsPage'
+import RecurringPaymentFormPage from './pages/RecurringPaymentFormPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -62,6 +64,9 @@ export default function App() {
             <Route path="/finances/portfolio/:assetId/transactions/new" element={<PortfolioTransactionFormPage />} />
             <Route path="/finances/portfolio/:assetId/transactions/:txId/edit" element={<PortfolioTransactionFormPage />} />
             <Route path="/finances/portfolio/:assetId" element={<PortfolioAssetPage />} />
+            <Route path="/gastos-recurrentes" element={<RecurringPaymentsPage />} />
+            <Route path="/gastos-recurrentes/new" element={<RecurringPaymentFormPage />} />
+            <Route path="/gastos-recurrentes/:id/edit" element={<RecurringPaymentFormPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
