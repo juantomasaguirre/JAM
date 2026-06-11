@@ -29,9 +29,29 @@ interface InstallmentPlan {
   first_due_date: string
 }
 
+interface Investment {
+  id: string
+  investment_type: string
+  name: string
+  invested_amount: number
+  current_value: number
+  currency: 'ARS' | 'USD'
+  started_on: string
+  expires_on: string | null
+  is_active: boolean
+}
+
 interface Profile {
   id: string
   display_name: string
+}
+
+const INVESTMENT_TYPE_LABELS: Record<string, string> = {
+  fx_savings: 'Dólares en el colchón',
+  plazo_fijo: 'Plazo fijo',
+  fci: 'Fondo de inversión',
+  etf: 'ETF',
+  asset_manager: 'Gestor de activos',
 }
 
 function formatAmount(amount: number, currency: 'ARS' | 'USD'): string {
@@ -42,7 +62,14 @@ function formatAmount(amount: number, currency: 'ARS' | 'USD'): string {
   return currency === 'ARS' ? `$ ${num}` : `U$S ${num}`
 }
 
-// Returns how many installments have come due based on today's date.
+function formatDate(dateStr: string): string {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 function computePaid(firstDueDateStr: string, installmentCount: number): number {
   const today = new Date()
   const first = new Date(firstDueDateStr + 'T12:00:00')
@@ -65,6 +92,7 @@ export default function FinancesPage() {
 
   const [debts, setDebts] = useState<Debt[]>([])
   const [installments, setInstallments] = useState<InstallmentPlan[]>([])
+  const [investments, setInvestments] = useState<Investment[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [currentUserId, setCurrentUserId] = useState('')
   const [loading, setLoading] = useState(true)
@@ -85,6 +113,7 @@ export default function FinancesPage() {
       const [
         { data: debtsData },
         { data: installmentsData },
+        { data: investmentsData },
         { data: profilesData },
       ] = await Promise.all([
         supabase
@@ -96,6 +125,10 @@ export default function FinancesPage() {
           .from('installment_plans')
           .select('*')
           .order('first_due_date'),
+        supabase
+          .from('investments')
+          .select('*')
+          .order('started_on', { ascending: false }),
         ownProfile
           ? supabase
               .from('profiles')
@@ -106,6 +139,7 @@ export default function FinancesPage() {
 
       if (debtsData) setDebts(debtsData)
       if (installmentsData) setInstallments(installmentsData)
+      if (investmentsData) setInvestments(investmentsData)
       if (profilesData) setProfiles(profilesData)
       setLoading(false)
     }
@@ -118,12 +152,11 @@ export default function FinancesPage() {
     { id: 'investments', label: 'Inversiones' },
   ]
 
-  // Debts
+  // --- Debts ---
   const activeDebts = debts.filter((d) => d.pending_amount > 0)
   const settledDebts = debts.filter((d) => d.pending_amount === 0)
   const iOwe = activeDebts.filter((d) => d.direction === 'i_owe')
   const theyOwe = activeDebts.filter((d) => d.direction === 'they_owe')
-
   const iOweTotals = {
     ars: iOwe.filter((d) => d.currency === 'ARS').reduce((s, d) => s + d.pending_amount, 0),
     usd: iOwe.filter((d) => d.currency === 'USD').reduce((s, d) => s + d.pending_amount, 0),
@@ -133,7 +166,7 @@ export default function FinancesPage() {
     usd: theyOwe.filter((d) => d.currency === 'USD').reduce((s, d) => s + d.pending_amount, 0),
   }
 
-  // Installments
+  // --- Installments ---
   const activeInstallments = installments.filter(
     (p) => computePaid(p.first_due_date, p.installment_count) < p.installment_count,
   )
@@ -146,6 +179,19 @@ export default function FinancesPage() {
   const monthlyUsd = activeInstallments
     .filter((p) => p.currency === 'USD')
     .reduce((s, p) => s + p.installment_amount, 0)
+
+  // --- Investments ---
+  const activeInvestments = investments.filter((i) => i.is_active)
+  const archivedInvestments = investments.filter((i) => !i.is_active)
+  const investmentSummary = (['ARS', 'USD'] as const)
+    .map((cur) => {
+      const items = activeInvestments.filter((i) => i.currency === cur)
+      if (items.length === 0) return null
+      const totalInvested = items.reduce((s, i) => s + i.invested_amount, 0)
+      const totalCurrent = items.reduce((s, i) => s + i.current_value, 0)
+      return { currency: cur, totalInvested, totalCurrent, gain: totalCurrent - totalInvested }
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
 
   function resolvedName(profileId: string | null): string {
     if (!profileId) return '—'
@@ -171,6 +217,14 @@ export default function FinancesPage() {
               onClick={() => navigate('/finances/installments/new')}
               className="text-white text-2xl font-light leading-none pb-0.5"
               aria-label="Nuevas cuotas"
+            >
+              +
+            </button>
+          ) : activeTab === 'investments' ? (
+            <button
+              onClick={() => navigate('/finances/investments/new')}
+              className="text-white text-2xl font-light leading-none pb-0.5"
+              aria-label="Nueva inversión"
             >
               +
             </button>
@@ -246,7 +300,6 @@ export default function FinancesPage() {
                   )}
                 </div>
               )}
-
               {iOwe.length > 0 && (
                 <DebtSection
                   title="Les debo"
@@ -294,7 +347,6 @@ export default function FinancesPage() {
             </div>
           ) : (
             <div>
-              {/* Monthly commitment summary */}
               {activeInstallments.length > 0 && (
                 <div className="p-4">
                   <div className="bg-card rounded-xl p-3 border border-border">
@@ -312,7 +364,6 @@ export default function FinancesPage() {
                   </div>
                 </div>
               )}
-
               {activeInstallments.length > 0 && (
                 <InstallmentSection
                   title="En curso"
@@ -337,10 +388,66 @@ export default function FinancesPage() {
         </>
       )}
 
+      {/* Investments tab */}
       {activeTab === 'investments' && (
-        <div className="flex flex-col items-center pt-16 gap-2">
-          <p className="text-gray-400 text-sm">Inversiones — próximamente</p>
-        </div>
+        <>
+          {loading ? (
+            <div className="flex justify-center pt-16 text-gray-400 text-sm">Cargando…</div>
+          ) : investments.length === 0 ? (
+            <div className="flex flex-col items-center pt-16 gap-3">
+              <p className="text-gray-400 text-sm">Sin inversiones registradas.</p>
+              <button
+                onClick={() => navigate('/finances/investments/new')}
+                className="text-primary text-sm font-medium"
+              >
+                Agregar la primera
+              </button>
+            </div>
+          ) : (
+            <div>
+              {/* Summary cards */}
+              {investmentSummary.length > 0 && (
+                <div className="flex gap-3 p-4">
+                  {investmentSummary.map(({ currency, totalInvested, totalCurrent, gain }) => (
+                    <div key={currency} className="flex-1 bg-card rounded-xl p-3 border border-border">
+                      <p className="text-xs text-gray-400 mb-1">{currency === 'ARS' ? 'En pesos' : 'En dólares'}</p>
+                      <p className="text-sm font-bold text-gray-900">
+                        {formatAmount(totalCurrent, currency)}
+                      </p>
+                      {gain !== 0 && (
+                        <p className={`text-xs font-medium ${gain >= 0 ? 'text-green-600' : 'text-negative'}`}>
+                          {gain >= 0 ? '+' : ''}{formatAmount(gain, currency)}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-300 mt-0.5">
+                        invertido: {formatAmount(totalInvested, currency)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Active investments */}
+              {activeInvestments.length > 0 && (
+                <InvestmentSection
+                  title="Activas"
+                  items={activeInvestments}
+                  onEdit={(id) => navigate(`/finances/investments/${id}/edit`)}
+                />
+              )}
+
+              {/* Archived investments */}
+              {archivedInvestments.length > 0 && (
+                <InvestmentSection
+                  title="Archivadas"
+                  items={archivedInvestments}
+                  muted
+                  onEdit={(id) => navigate(`/finances/investments/${id}/edit`)}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <BottomNav />
@@ -414,8 +521,7 @@ function InstallmentSection({
       {items.map((plan) => {
         const paid = computePaid(plan.first_due_date, plan.installment_count)
         const remaining = plan.installment_count - paid
-        const nextDue =
-          remaining > 0 ? addMonths(plan.first_due_date, paid) : null
+        const nextDue = remaining > 0 ? addMonths(plan.first_due_date, paid) : null
 
         return (
           <button
@@ -438,10 +544,7 @@ function InstallmentSection({
               {nextDue && (
                 <p className="text-xs text-gray-300 mt-0.5">
                   Próx.{' '}
-                  {nextDue.toLocaleDateString('es-AR', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
+                  {nextDue.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
                 </p>
               )}
             </div>
@@ -452,6 +555,66 @@ function InstallmentSection({
               {remaining > 0 && (
                 <p className="text-xs text-gray-400">
                   {remaining} {remaining === 1 ? 'restante' : 'restantes'}
+                </p>
+              )}
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function InvestmentSection({
+  title,
+  items,
+  muted = false,
+  onEdit,
+}: {
+  title: string
+  items: Investment[]
+  muted?: boolean
+  onEdit: (id: string) => void
+}) {
+  return (
+    <div className={muted ? 'opacity-50' : ''}>
+      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        {title}
+      </div>
+      {items.map((inv) => {
+        const gain = inv.current_value - inv.invested_amount
+        const gainPct =
+          inv.invested_amount > 0 ? (gain / inv.invested_amount) * 100 : 0
+        const gainColor = gain >= 0 ? 'text-green-600' : 'text-negative'
+        const gainPrefix = gain >= 0 ? '+' : ''
+
+        return (
+          <button
+            key={inv.id}
+            onClick={() => onEdit(inv.id)}
+            className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand"
+          >
+            <div className="flex-1 min-w-0 mr-3">
+              <p className="text-sm font-medium text-gray-900 truncate">{inv.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {INVESTMENT_TYPE_LABELS[inv.investment_type] ?? inv.investment_type}
+              </p>
+              {inv.expires_on && (
+                <p className="text-xs text-gray-300 mt-0.5">
+                  Vence {formatDate(inv.expires_on)}
+                </p>
+              )}
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-semibold text-gray-900">
+                {formatAmount(inv.current_value, inv.currency)}
+              </p>
+              {gain !== 0 && (
+                <p className={`text-xs font-medium ${gainColor}`}>
+                  {gainPrefix}{formatAmount(Math.abs(gain), inv.currency)}{' '}
+                  <span className="font-normal">
+                    ({gainPrefix}{gainPct.toFixed(1)}%)
+                  </span>
                 </p>
               )}
             </div>
