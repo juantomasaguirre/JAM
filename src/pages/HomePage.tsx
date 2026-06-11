@@ -67,6 +67,17 @@ export default function HomePage() {
             <p className="text-xs text-gray-400 mt-0.5">Resumen y análisis por categoría</p>
           </div>
         </button>
+
+        <button
+          onClick={() => navigate('/gastos-recurrentes')}
+          className="w-full bg-card border border-border rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:bg-sand transition-colors"
+        >
+          <span className="text-2xl">📅</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Gastos recurrentes</p>
+            <p className="text-xs text-gray-400 mt-0.5">Recordatorios de pagos mensuales</p>
+          </div>
+        </button>
       </div>
 
       {/* Footer */}
