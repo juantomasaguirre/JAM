@@ -89,10 +89,13 @@ export default function DashboardPage() {
   const [allLoading, setAllLoading] = useState(true)
   const [settling, setSettling] = useState(false)
   const [settleError, setSettleError] = useState('')
+  const [activeDebtCount, setActiveDebtCount] = useState(0)
+  const [dashInstallments, setDashInstallments] = useState<{ installment_amount: number; currency: string; installment_count: number; first_due_date: string }[]>([])
+  const [dashInvestments, setDashInvestments] = useState<{ current_value: number; currency: string }[]>([])
 
   useEffect(() => {
     async function loadAccumulated() {
-      const [sharedResult, rateResult, catsResult, profilesResult, userResult] = await Promise.all([
+      const [sharedResult, rateResult, catsResult, profilesResult, userResult, debtsResult, installmentsResult, investmentsResult] = await Promise.all([
         supabase
           .from('movements')
           .select('id, scope, amount, currency, paid_by')
@@ -110,6 +113,9 @@ export default function DashboardPage() {
           .eq('name', 'Liquidaciones'),
         supabase.from('profiles').select('id, display_name, household_id'),
         supabase.auth.getUser(),
+        supabase.from('debts').select('id').gt('pending_amount', 0),
+        supabase.from('installment_plans').select('installment_amount, currency, installment_count, first_due_date'),
+        supabase.from('investments').select('current_value, currency').eq('is_active', true),
       ])
 
       if (sharedResult.data) setAllSharedMovements(sharedResult.data as unknown as AccumulatedMovement[])
@@ -126,6 +132,9 @@ export default function DashboardPage() {
         if (me) setHouseholdId(me.household_id)
       }
       setCurrentUserId(uid)
+      setActiveDebtCount(debtsResult.data?.length ?? 0)
+      setDashInstallments(installmentsResult.data ?? [])
+      setDashInvestments(investmentsResult.data ?? [])
       setAllLoading(false)
     }
     loadAccumulated()
@@ -178,6 +187,20 @@ export default function DashboardPage() {
   }
 
   const otherUser = profiles.find((p) => p.id !== currentUserId)
+
+  // Finance summary — independent of selected month
+  const activeDashInstallments = dashInstallments.filter((p) => {
+    const today = new Date()
+    const first = new Date(p.first_due_date + 'T12:00:00')
+    const monthsElapsed = (today.getFullYear() - first.getFullYear()) * 12 + (today.getMonth() - first.getMonth())
+    const paid = Math.max(0, Math.min(monthsElapsed + (today.getDate() >= first.getDate() ? 1 : 0), p.installment_count))
+    return paid < p.installment_count
+  })
+  const dashMonthlyArs = activeDashInstallments.filter((p) => p.currency === 'ARS').reduce((s, p) => s + p.installment_amount, 0)
+  const dashMonthlyUsd = activeDashInstallments.filter((p) => p.currency === 'USD').reduce((s, p) => s + p.installment_amount, 0)
+  const dashInvArs = dashInvestments.filter((i) => i.currency === 'ARS').reduce((s, i) => s + i.current_value, 0)
+  const dashInvUsd = dashInvestments.filter((i) => i.currency === 'USD').reduce((s, i) => s + i.current_value, 0)
+  const hasFinanceData = activeDebtCount > 0 || dashMonthlyArs > 0 || dashMonthlyUsd > 0 || dashInvArs > 0 || dashInvUsd > 0
 
   let accumulatedBalance = 0
   for (const m of allSharedMovements) {
@@ -318,6 +341,48 @@ export default function DashboardPage() {
           )}
           {settleError && <p className="text-xs text-negative mt-1">{settleError}</p>}
         </div>
+
+        {/* Finance summary */}
+        {(allLoading || hasFinanceData) && (
+          <div className="bg-card rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Finanzas</p>
+              <button onClick={() => navigate('/finances')} className="text-xs text-primary font-medium">
+                Ver →
+              </button>
+            </div>
+            {allLoading ? (
+              <p className="text-sm text-gray-400">Cargando…</p>
+            ) : (
+              <div className="divide-y divide-sand">
+                {activeDebtCount > 0 && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">Deudas activas</span>
+                    <span className="text-sm font-semibold text-gray-900">{activeDebtCount}</span>
+                  </div>
+                )}
+                {(dashMonthlyArs > 0 || dashMonthlyUsd > 0) && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">Cuotas / mes</span>
+                    <div className="text-right">
+                      {dashMonthlyArs > 0 && <p className="text-sm font-semibold text-gray-900">{formatAmount(dashMonthlyArs, 'ARS')}</p>}
+                      {dashMonthlyUsd > 0 && <p className="text-sm font-semibold text-gray-900">{formatAmount(dashMonthlyUsd, 'USD')}</p>}
+                    </div>
+                  </div>
+                )}
+                {(dashInvArs > 0 || dashInvUsd > 0) && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">Inversiones</span>
+                    <div className="text-right">
+                      {dashInvArs > 0 && <p className="text-sm font-semibold text-gray-900">{formatAmount(dashInvArs, 'ARS')}</p>}
+                      {dashInvUsd > 0 && <p className="text-sm font-semibold text-gray-900">{formatAmount(dashInvUsd, 'USD')}</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Month selector */}
         <div className="flex justify-center">
