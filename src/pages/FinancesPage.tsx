@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import NavBar from '../components/NavBar'
 import BottomNav from '../components/BottomNav'
 
-type Tab = 'debts' | 'installments' | 'investments'
+type Tab = 'debts' | 'installments' | 'investments' | 'portfolio'
 
 interface Debt {
   id: string
@@ -41,6 +41,21 @@ interface Investment {
   is_active: boolean
 }
 
+interface PortfolioTransaction {
+  transaction_type: 'buy' | 'sell' | 'dividend' | 'coupon'
+  total_amount: number
+  exchange_rate: number | null
+}
+
+interface PortfolioAsset {
+  id: string
+  name: string
+  asset_type: string
+  currency: 'ARS' | 'USD'
+  is_closed: boolean
+  portfolio_transactions: PortfolioTransaction[]
+}
+
 interface Profile {
   id: string
   display_name: string
@@ -52,6 +67,14 @@ const INVESTMENT_TYPE_LABELS: Record<string, string> = {
   fci: 'Fondo de inversión',
   etf: 'ETF',
   asset_manager: 'Gestor de activos',
+}
+
+const ASSET_TYPE_LABELS: Record<string, string> = {
+  stock: 'Acción',
+  bond: 'Bono',
+  etf: 'ETF',
+  on: 'ON',
+  other: 'Otro',
 }
 
 function formatAmount(amount: number, currency: 'ARS' | 'USD'): string {
@@ -85,17 +108,50 @@ function addMonths(dateStr: string, months: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + months, d.getDate())
 }
 
+function computeAssetPL(
+  asset: PortfolioAsset,
+  displayCurrency: 'ARS' | 'USD',
+  fallbackRate: number | null,
+): { totalInvested: number; totalReceived: number; net: number; returnPct: number | null } {
+  let totalInvested = 0
+  let totalReceived = 0
+
+  for (const tx of asset.portfolio_transactions) {
+    let amount = tx.total_amount
+    if (asset.currency !== displayCurrency) {
+      const rate = tx.exchange_rate ?? fallbackRate
+      if (rate === null) continue
+      amount = asset.currency === 'USD' ? amount * rate : amount / rate
+    }
+    if (tx.transaction_type === 'buy') totalInvested += amount
+    else totalReceived += amount
+  }
+
+  const net = totalReceived - totalInvested
+  const returnPct = totalInvested > 0 ? (net / totalInvested) * 100 : null
+  return { totalInvested, totalReceived, net, returnPct }
+}
+
 export default function FinancesPage() {
   const location = useLocation()
   const initialTab = (new URLSearchParams(location.search).get('tab') as Tab | null) ?? 'debts'
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
 
+  // Shared data (loaded on mount)
   const [debts, setDebts] = useState<Debt[]>([])
   const [installments, setInstallments] = useState<InstallmentPlan[]>([])
   const [investments, setInvestments] = useState<Investment[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [currentUserId, setCurrentUserId] = useState('')
   const [loading, setLoading] = useState(true)
+
+  // Portfolio data (loaded lazily when tab is active)
+  const [portfolio, setPortfolio] = useState<PortfolioAsset[]>([])
+  const [portfolioLoading, setPortfolioLoading] = useState(false)
+  const [portfolioFetched, setPortfolioFetched] = useState(false)
+  const [portfolioRate, setPortfolioRate] = useState<number | null>(null)
+  const [portfolioDisplayCurrency, setPortfolioDisplayCurrency] = useState<'ARS' | 'USD'>('ARS')
+
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -116,24 +172,11 @@ export default function FinancesPage() {
         { data: investmentsData },
         { data: profilesData },
       ] = await Promise.all([
-        supabase
-          .from('debts')
-          .select('*')
-          .order('pending_amount', { ascending: false })
-          .order('occurred_on', { ascending: false }),
-        supabase
-          .from('installment_plans')
-          .select('*')
-          .order('first_due_date'),
-        supabase
-          .from('investments')
-          .select('*')
-          .order('started_on', { ascending: false }),
+        supabase.from('debts').select('*').order('pending_amount', { ascending: false }).order('occurred_on', { ascending: false }),
+        supabase.from('installment_plans').select('*').order('first_due_date'),
+        supabase.from('investments').select('*').order('started_on', { ascending: false }),
         ownProfile
-          ? supabase
-              .from('profiles')
-              .select('id, display_name')
-              .eq('household_id', ownProfile.household_id)
+          ? supabase.from('profiles').select('id, display_name').eq('household_id', ownProfile.household_id)
           : Promise.resolve({ data: [] as Profile[] }),
       ])
 
@@ -146,10 +189,34 @@ export default function FinancesPage() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (activeTab !== 'portfolio' || portfolioFetched) return
+    setPortfolioLoading(true)
+    Promise.all([
+      supabase
+        .from('portfolio_assets')
+        .select('*, portfolio_transactions(transaction_type, total_amount, exchange_rate)')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('fx_rates')
+        .select('sell')
+        .eq('dollar_type', 'mep')
+        .order('rate_date', { ascending: false })
+        .limit(1)
+        .single(),
+    ]).then(([{ data: assetsData }, { data: rateData }]) => {
+      if (assetsData) setPortfolio(assetsData)
+      setPortfolioRate(rateData?.sell ?? null)
+      setPortfolioFetched(true)
+      setPortfolioLoading(false)
+    })
+  }, [activeTab, portfolioFetched])
+
   const tabs: { id: Tab; label: string }[] = [
     { id: 'debts', label: 'Deudas' },
     { id: 'installments', label: 'Cuotas' },
-    { id: 'investments', label: 'Inversiones' },
+    { id: 'investments', label: 'Ahorro' },
+    { id: 'portfolio', label: 'Cartera' },
   ]
 
   // --- Debts ---
@@ -173,12 +240,8 @@ export default function FinancesPage() {
   const completedInstallments = installments.filter(
     (p) => computePaid(p.first_due_date, p.installment_count) >= p.installment_count,
   )
-  const monthlyArs = activeInstallments
-    .filter((p) => p.currency === 'ARS')
-    .reduce((s, p) => s + p.installment_amount, 0)
-  const monthlyUsd = activeInstallments
-    .filter((p) => p.currency === 'USD')
-    .reduce((s, p) => s + p.installment_amount, 0)
+  const monthlyArs = activeInstallments.filter((p) => p.currency === 'ARS').reduce((s, p) => s + p.installment_amount, 0)
+  const monthlyUsd = activeInstallments.filter((p) => p.currency === 'USD').reduce((s, p) => s + p.installment_amount, 0)
 
   // --- Investments ---
   const activeInvestments = investments.filter((i) => i.is_active)
@@ -193,6 +256,10 @@ export default function FinancesPage() {
     })
     .filter((x): x is NonNullable<typeof x> => x !== null)
 
+  // --- Portfolio ---
+  const openAssets = portfolio.filter((a) => !a.is_closed)
+  const closedAssets = portfolio.filter((a) => a.is_closed)
+
   function resolvedName(profileId: string | null): string {
     if (!profileId) return '—'
     if (profileId === currentUserId) return 'Yo'
@@ -205,29 +272,13 @@ export default function FinancesPage() {
         title="Finanzas"
         right={
           activeTab === 'debts' ? (
-            <button
-              onClick={() => navigate('/finances/debts/new')}
-              className="text-white text-2xl font-light leading-none pb-0.5"
-              aria-label="Nueva deuda"
-            >
-              +
-            </button>
+            <button onClick={() => navigate('/finances/debts/new')} className="text-white text-2xl font-light leading-none pb-0.5">+</button>
           ) : activeTab === 'installments' ? (
-            <button
-              onClick={() => navigate('/finances/installments/new')}
-              className="text-white text-2xl font-light leading-none pb-0.5"
-              aria-label="Nuevas cuotas"
-            >
-              +
-            </button>
+            <button onClick={() => navigate('/finances/installments/new')} className="text-white text-2xl font-light leading-none pb-0.5">+</button>
           ) : activeTab === 'investments' ? (
-            <button
-              onClick={() => navigate('/finances/investments/new')}
-              className="text-white text-2xl font-light leading-none pb-0.5"
-              aria-label="Nueva inversión"
-            >
-              +
-            </button>
+            <button onClick={() => navigate('/finances/investments/new')} className="text-white text-2xl font-light leading-none pb-0.5">+</button>
+          ) : activeTab === 'portfolio' ? (
+            <button onClick={() => navigate('/finances/portfolio/new')} className="text-white text-2xl font-light leading-none pb-0.5">+</button>
           ) : undefined
         }
       />
@@ -238,10 +289,8 @@ export default function FinancesPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${
-              activeTab === tab.id
-                ? 'text-primary border-primary'
-                : 'text-gray-400 border-transparent'
+            className={`flex-1 py-3 text-xs font-semibold transition-colors border-b-2 ${
+              activeTab === tab.id ? 'text-primary border-primary' : 'text-gray-400 border-transparent'
             }`}
           >
             {tab.label}
@@ -257,12 +306,7 @@ export default function FinancesPage() {
           ) : debts.length === 0 ? (
             <div className="flex flex-col items-center pt-16 gap-3">
               <p className="text-gray-400 text-sm">Sin deudas registradas.</p>
-              <button
-                onClick={() => navigate('/finances/debts/new')}
-                className="text-primary text-sm font-medium"
-              >
-                Agregar la primera
-              </button>
+              <button onClick={() => navigate('/finances/debts/new')} className="text-primary text-sm font-medium">Agregar la primera</button>
             </div>
           ) : (
             <div>
@@ -271,60 +315,22 @@ export default function FinancesPage() {
                   {iOwe.length > 0 && (
                     <div className="flex-1 bg-card rounded-xl p-3 border border-border">
                       <p className="text-xs text-gray-400 mb-1">Les debo</p>
-                      {iOweTotals.ars > 0 && (
-                        <p className="text-sm font-bold text-negative">
-                          {formatAmount(iOweTotals.ars, 'ARS')}
-                        </p>
-                      )}
-                      {iOweTotals.usd > 0 && (
-                        <p className="text-sm font-bold text-negative">
-                          {formatAmount(iOweTotals.usd, 'USD')}
-                        </p>
-                      )}
+                      {iOweTotals.ars > 0 && <p className="text-sm font-bold text-negative">{formatAmount(iOweTotals.ars, 'ARS')}</p>}
+                      {iOweTotals.usd > 0 && <p className="text-sm font-bold text-negative">{formatAmount(iOweTotals.usd, 'USD')}</p>}
                     </div>
                   )}
                   {theyOwe.length > 0 && (
                     <div className="flex-1 bg-card rounded-xl p-3 border border-border">
                       <p className="text-xs text-gray-400 mb-1">Me deben</p>
-                      {theyOweTotals.ars > 0 && (
-                        <p className="text-sm font-bold text-green-600">
-                          {formatAmount(theyOweTotals.ars, 'ARS')}
-                        </p>
-                      )}
-                      {theyOweTotals.usd > 0 && (
-                        <p className="text-sm font-bold text-green-600">
-                          {formatAmount(theyOweTotals.usd, 'USD')}
-                        </p>
-                      )}
+                      {theyOweTotals.ars > 0 && <p className="text-sm font-bold text-green-600">{formatAmount(theyOweTotals.ars, 'ARS')}</p>}
+                      {theyOweTotals.usd > 0 && <p className="text-sm font-bold text-green-600">{formatAmount(theyOweTotals.usd, 'USD')}</p>}
                     </div>
                   )}
                 </div>
               )}
-              {iOwe.length > 0 && (
-                <DebtSection
-                  title="Les debo"
-                  items={iOwe}
-                  amountColor="text-negative"
-                  onEdit={(id) => navigate(`/finances/debts/${id}/edit`)}
-                />
-              )}
-              {theyOwe.length > 0 && (
-                <DebtSection
-                  title="Me deben"
-                  items={theyOwe}
-                  amountColor="text-green-600"
-                  onEdit={(id) => navigate(`/finances/debts/${id}/edit`)}
-                />
-              )}
-              {settledDebts.length > 0 && (
-                <DebtSection
-                  title="Saldadas"
-                  items={settledDebts}
-                  amountColor="text-gray-300"
-                  muted
-                  onEdit={(id) => navigate(`/finances/debts/${id}/edit`)}
-                />
-              )}
+              {iOwe.length > 0 && <DebtSection title="Les debo" items={iOwe} amountColor="text-negative" onEdit={(id) => navigate(`/finances/debts/${id}/edit`)} />}
+              {theyOwe.length > 0 && <DebtSection title="Me deben" items={theyOwe} amountColor="text-green-600" onEdit={(id) => navigate(`/finances/debts/${id}/edit`)} />}
+              {settledDebts.length > 0 && <DebtSection title="Saldadas" items={settledDebts} amountColor="text-gray-300" muted onEdit={(id) => navigate(`/finances/debts/${id}/edit`)} />}
             </div>
           )}
         </>
@@ -338,12 +344,7 @@ export default function FinancesPage() {
           ) : installments.length === 0 ? (
             <div className="flex flex-col items-center pt-16 gap-3">
               <p className="text-gray-400 text-sm">Sin cuotas registradas.</p>
-              <button
-                onClick={() => navigate('/finances/installments/new')}
-                className="text-primary text-sm font-medium"
-              >
-                Agregar la primera
-              </button>
+              <button onClick={() => navigate('/finances/installments/new')} className="text-primary text-sm font-medium">Agregar la primera</button>
             </div>
           ) : (
             <div>
@@ -351,44 +352,19 @@ export default function FinancesPage() {
                 <div className="p-4">
                   <div className="bg-card rounded-xl p-3 border border-border">
                     <p className="text-xs text-gray-400 mb-1">Compromiso mensual</p>
-                    {monthlyArs > 0 && (
-                      <p className="text-sm font-bold text-gray-900">
-                        {formatAmount(monthlyArs, 'ARS')}
-                      </p>
-                    )}
-                    {monthlyUsd > 0 && (
-                      <p className="text-sm font-bold text-gray-900">
-                        {formatAmount(monthlyUsd, 'USD')}
-                      </p>
-                    )}
+                    {monthlyArs > 0 && <p className="text-sm font-bold text-gray-900">{formatAmount(monthlyArs, 'ARS')}</p>}
+                    {monthlyUsd > 0 && <p className="text-sm font-bold text-gray-900">{formatAmount(monthlyUsd, 'USD')}</p>}
                   </div>
                 </div>
               )}
-              {activeInstallments.length > 0 && (
-                <InstallmentSection
-                  title="En curso"
-                  items={activeInstallments}
-                  currentUserId={currentUserId}
-                  resolvedName={resolvedName}
-                  onEdit={(id) => navigate(`/finances/installments/${id}/edit`)}
-                />
-              )}
-              {completedInstallments.length > 0 && (
-                <InstallmentSection
-                  title="Terminadas"
-                  items={completedInstallments}
-                  currentUserId={currentUserId}
-                  resolvedName={resolvedName}
-                  muted
-                  onEdit={(id) => navigate(`/finances/installments/${id}/edit`)}
-                />
-              )}
+              {activeInstallments.length > 0 && <InstallmentSection title="En curso" items={activeInstallments} currentUserId={currentUserId} resolvedName={resolvedName} onEdit={(id) => navigate(`/finances/installments/${id}/edit`)} />}
+              {completedInstallments.length > 0 && <InstallmentSection title="Terminadas" items={completedInstallments} currentUserId={currentUserId} resolvedName={resolvedName} muted onEdit={(id) => navigate(`/finances/installments/${id}/edit`)} />}
             </div>
           )}
         </>
       )}
 
-      {/* Investments tab */}
+      {/* Investments (savings) tab */}
       {activeTab === 'investments' && (
         <>
           {loading ? (
@@ -396,53 +372,72 @@ export default function FinancesPage() {
           ) : investments.length === 0 ? (
             <div className="flex flex-col items-center pt-16 gap-3">
               <p className="text-gray-400 text-sm">Sin inversiones registradas.</p>
-              <button
-                onClick={() => navigate('/finances/investments/new')}
-                className="text-primary text-sm font-medium"
-              >
-                Agregar la primera
-              </button>
+              <button onClick={() => navigate('/finances/investments/new')} className="text-primary text-sm font-medium">Agregar la primera</button>
             </div>
           ) : (
             <div>
-              {/* Summary cards */}
               {investmentSummary.length > 0 && (
                 <div className="flex gap-3 p-4">
                   {investmentSummary.map(({ currency, totalInvested, totalCurrent, gain }) => (
                     <div key={currency} className="flex-1 bg-card rounded-xl p-3 border border-border">
                       <p className="text-xs text-gray-400 mb-1">{currency === 'ARS' ? 'En pesos' : 'En dólares'}</p>
-                      <p className="text-sm font-bold text-gray-900">
-                        {formatAmount(totalCurrent, currency)}
-                      </p>
+                      <p className="text-sm font-bold text-gray-900">{formatAmount(totalCurrent, currency)}</p>
                       {gain !== 0 && (
                         <p className={`text-xs font-medium ${gain >= 0 ? 'text-green-600' : 'text-negative'}`}>
                           {gain >= 0 ? '+' : ''}{formatAmount(gain, currency)}
                         </p>
                       )}
-                      <p className="text-xs text-gray-300 mt-0.5">
-                        invertido: {formatAmount(totalInvested, currency)}
-                      </p>
+                      <p className="text-xs text-gray-300 mt-0.5">invertido: {formatAmount(totalInvested, currency)}</p>
                     </div>
                   ))}
                 </div>
               )}
+              {activeInvestments.length > 0 && <InvestmentSection title="Activas" items={activeInvestments} onEdit={(id) => navigate(`/finances/investments/${id}/edit`)} />}
+              {archivedInvestments.length > 0 && <InvestmentSection title="Archivadas" items={archivedInvestments} muted onEdit={(id) => navigate(`/finances/investments/${id}/edit`)} />}
+            </div>
+          )}
+        </>
+      )}
 
-              {/* Active investments */}
-              {activeInvestments.length > 0 && (
-                <InvestmentSection
-                  title="Activas"
-                  items={activeInvestments}
-                  onEdit={(id) => navigate(`/finances/investments/${id}/edit`)}
+      {/* Portfolio tab */}
+      {activeTab === 'portfolio' && (
+        <>
+          {portfolioLoading ? (
+            <div className="flex justify-center pt-16 text-gray-400 text-sm">Cargando…</div>
+          ) : portfolio.length === 0 ? (
+            <div className="flex flex-col items-center pt-16 gap-3">
+              <p className="text-gray-400 text-sm">Sin activos en cartera.</p>
+              <button onClick={() => navigate('/finances/portfolio/new')} className="text-primary text-sm font-medium">Agregar el primero</button>
+            </div>
+          ) : (
+            <div>
+              {/* Currency toggle */}
+              <div className="flex justify-end px-4 pt-3 pb-1">
+                <button
+                  onClick={() => setPortfolioDisplayCurrency((c) => (c === 'ARS' ? 'USD' : 'ARS'))}
+                  className="text-xs font-semibold bg-card border border-border text-gray-600 px-3 py-1.5 rounded-lg"
+                >
+                  Ver en {portfolioDisplayCurrency === 'ARS' ? 'USD' : 'ARS'}
+                </button>
+              </div>
+
+              {openAssets.length > 0 && (
+                <PortfolioSection
+                  title="Posiciones abiertas"
+                  items={openAssets}
+                  displayCurrency={portfolioDisplayCurrency}
+                  fallbackRate={portfolioRate}
+                  onTap={(id) => navigate(`/finances/portfolio/${id}`)}
                 />
               )}
-
-              {/* Archived investments */}
-              {archivedInvestments.length > 0 && (
-                <InvestmentSection
-                  title="Archivadas"
-                  items={archivedInvestments}
+              {closedAssets.length > 0 && (
+                <PortfolioSection
+                  title="Posiciones cerradas"
+                  items={closedAssets}
+                  displayCurrency={portfolioDisplayCurrency}
+                  fallbackRate={portfolioRate}
                   muted
-                  onEdit={(id) => navigate(`/finances/investments/${id}/edit`)}
+                  onTap={(id) => navigate(`/finances/portfolio/${id}`)}
                 />
               )}
             </div>
@@ -455,42 +450,24 @@ export default function FinancesPage() {
   )
 }
 
-function DebtSection({
-  title,
-  items,
-  amountColor,
-  muted = false,
-  onEdit,
-}: {
-  title: string
-  items: Debt[]
-  amountColor: string
-  muted?: boolean
-  onEdit: (id: string) => void
+// ─── Sub-components ───────────────────────────────────────────────
+
+function DebtSection({ title, items, amountColor, muted = false, onEdit }: {
+  title: string; items: Debt[]; amountColor: string; muted?: boolean; onEdit: (id: string) => void
 }) {
   return (
     <div className={muted ? 'opacity-50' : ''}>
-      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        {title}
-      </div>
+      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</div>
       {items.map((debt) => (
-        <button
-          key={debt.id}
-          onClick={() => onEdit(debt.id)}
-          className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand"
-        >
+        <button key={debt.id} onClick={() => onEdit(debt.id)} className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand">
           <div className="flex-1 min-w-0 mr-3">
             <p className="text-sm font-medium text-gray-900 truncate">{debt.counterpart}</p>
             <p className="text-xs text-gray-400 mt-0.5 truncate">{debt.description}</p>
           </div>
           <div className="text-right">
-            <p className={`text-sm font-semibold ${amountColor}`}>
-              {formatAmount(debt.pending_amount, debt.currency)}
-            </p>
+            <p className={`text-sm font-semibold ${amountColor}`}>{formatAmount(debt.pending_amount, debt.currency)}</p>
             {debt.pending_amount > 0 && debt.pending_amount !== debt.original_amount && (
-              <p className="text-xs text-gray-300">
-                de {formatAmount(debt.original_amount, debt.currency)}
-              </p>
+              <p className="text-xs text-gray-300">de {formatAmount(debt.original_amount, debt.currency)}</p>
             )}
           </div>
         </button>
@@ -499,62 +476,60 @@ function DebtSection({
   )
 }
 
-function InstallmentSection({
-  title,
-  items,
-  resolvedName,
-  muted = false,
-  onEdit,
-}: {
-  title: string
-  items: InstallmentPlan[]
-  currentUserId: string
-  resolvedName: (id: string | null) => string
-  muted?: boolean
-  onEdit: (id: string) => void
+function InstallmentSection({ title, items, resolvedName, muted = false, onEdit }: {
+  title: string; items: InstallmentPlan[]; currentUserId: string; resolvedName: (id: string | null) => string; muted?: boolean; onEdit: (id: string) => void
 }) {
   return (
     <div className={muted ? 'opacity-50' : ''}>
-      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        {title}
-      </div>
+      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</div>
       {items.map((plan) => {
         const paid = computePaid(plan.first_due_date, plan.installment_count)
         const remaining = plan.installment_count - paid
         const nextDue = remaining > 0 ? addMonths(plan.first_due_date, paid) : null
-
         return (
-          <button
-            key={plan.id}
-            onClick={() => onEdit(plan.id)}
-            className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand"
-          >
+          <button key={plan.id} onClick={() => onEdit(plan.id)} className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand">
             <div className="flex-1 min-w-0 mr-3">
               <p className="text-sm font-medium text-gray-900 truncate">{plan.description}</p>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <p className="text-xs text-gray-400">
-                  {paid}/{plan.installment_count} cuotas
-                </p>
-                {plan.scope === 'shared' && (
-                  <span className="text-xs text-gray-400">
-                    · paga {resolvedName(plan.paid_by)}
-                  </span>
-                )}
+                <p className="text-xs text-gray-400">{paid}/{plan.installment_count} cuotas</p>
+                {plan.scope === 'shared' && <span className="text-xs text-gray-400">· paga {resolvedName(plan.paid_by)}</span>}
               </div>
-              {nextDue && (
-                <p className="text-xs text-gray-300 mt-0.5">
-                  Próx.{' '}
-                  {nextDue.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                </p>
-              )}
+              {nextDue && <p className="text-xs text-gray-300 mt-0.5">Próx. {nextDue.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</p>}
             </div>
             <div className="text-right shrink-0">
-              <p className="text-sm font-semibold text-gray-900">
-                {formatAmount(plan.installment_amount, plan.currency)}
-              </p>
-              {remaining > 0 && (
-                <p className="text-xs text-gray-400">
-                  {remaining} {remaining === 1 ? 'restante' : 'restantes'}
+              <p className="text-sm font-semibold text-gray-900">{formatAmount(plan.installment_amount, plan.currency)}</p>
+              {remaining > 0 && <p className="text-xs text-gray-400">{remaining} {remaining === 1 ? 'restante' : 'restantes'}</p>}
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function InvestmentSection({ title, items, muted = false, onEdit }: {
+  title: string; items: Investment[]; muted?: boolean; onEdit: (id: string) => void
+}) {
+  return (
+    <div className={muted ? 'opacity-50' : ''}>
+      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</div>
+      {items.map((inv) => {
+        const gain = inv.current_value - inv.invested_amount
+        const gainPct = inv.invested_amount > 0 ? (gain / inv.invested_amount) * 100 : 0
+        const gainColor = gain >= 0 ? 'text-green-600' : 'text-negative'
+        const gainPrefix = gain >= 0 ? '+' : ''
+        return (
+          <button key={inv.id} onClick={() => onEdit(inv.id)} className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand">
+            <div className="flex-1 min-w-0 mr-3">
+              <p className="text-sm font-medium text-gray-900 truncate">{inv.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{INVESTMENT_TYPE_LABELS[inv.investment_type] ?? inv.investment_type}</p>
+              {inv.expires_on && <p className="text-xs text-gray-300 mt-0.5">Vence {formatDate(inv.expires_on)}</p>}
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-semibold text-gray-900">{formatAmount(inv.current_value, inv.currency)}</p>
+              {gain !== 0 && (
+                <p className={`text-xs font-medium ${gainColor}`}>
+                  {gainPrefix}{formatAmount(Math.abs(gain), inv.currency)} <span className="font-normal">({gainPrefix}{gainPct.toFixed(1)}%)</span>
                 </p>
               )}
             </div>
@@ -565,57 +540,36 @@ function InstallmentSection({
   )
 }
 
-function InvestmentSection({
-  title,
-  items,
-  muted = false,
-  onEdit,
-}: {
-  title: string
-  items: Investment[]
-  muted?: boolean
-  onEdit: (id: string) => void
+function PortfolioSection({ title, items, displayCurrency, fallbackRate, muted = false, onTap }: {
+  title: string; items: PortfolioAsset[]; displayCurrency: 'ARS' | 'USD'; fallbackRate: number | null; muted?: boolean; onTap: (id: string) => void
 }) {
   return (
     <div className={muted ? 'opacity-50' : ''}>
-      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        {title}
-      </div>
-      {items.map((inv) => {
-        const gain = inv.current_value - inv.invested_amount
-        const gainPct =
-          inv.invested_amount > 0 ? (gain / inv.invested_amount) * 100 : 0
-        const gainColor = gain >= 0 ? 'text-green-600' : 'text-negative'
-        const gainPrefix = gain >= 0 ? '+' : ''
-
+      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</div>
+      {items.map((asset) => {
+        const { totalInvested, net, returnPct } = computeAssetPL(asset, displayCurrency, fallbackRate)
+        const hasOps = asset.portfolio_transactions.length > 0
         return (
-          <button
-            key={inv.id}
-            onClick={() => onEdit(inv.id)}
-            className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand"
-          >
+          <button key={asset.id} onClick={() => onTap(asset.id)} className="w-full bg-card border-b border-sand px-4 py-3 flex items-center justify-between text-left active:bg-sand">
             <div className="flex-1 min-w-0 mr-3">
-              <p className="text-sm font-medium text-gray-900 truncate">{inv.name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {INVESTMENT_TYPE_LABELS[inv.investment_type] ?? inv.investment_type}
-              </p>
-              {inv.expires_on && (
-                <p className="text-xs text-gray-300 mt-0.5">
-                  Vence {formatDate(inv.expires_on)}
-                </p>
-              )}
+              <p className="text-sm font-medium text-gray-900 truncate">{asset.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{ASSET_TYPE_LABELS[asset.asset_type] ?? asset.asset_type} · {asset.currency}</p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-sm font-semibold text-gray-900">
-                {formatAmount(inv.current_value, inv.currency)}
-              </p>
-              {gain !== 0 && (
-                <p className={`text-xs font-medium ${gainColor}`}>
-                  {gainPrefix}{formatAmount(Math.abs(gain), inv.currency)}{' '}
-                  <span className="font-normal">
-                    ({gainPrefix}{gainPct.toFixed(1)}%)
-                  </span>
-                </p>
+              {hasOps ? (
+                <>
+                  <p className="text-xs text-gray-400">invertido: {formatAmount(totalInvested, displayCurrency)}</p>
+                  <p className={`text-sm font-semibold ${net >= 0 ? 'text-green-600' : 'text-negative'}`}>
+                    {net >= 0 ? '+' : ''}{formatAmount(net, displayCurrency)}
+                  </p>
+                  {returnPct !== null && (
+                    <p className={`text-xs ${net >= 0 ? 'text-green-600' : 'text-negative'}`}>
+                      {net >= 0 ? '+' : ''}{returnPct.toFixed(1)}%
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-gray-300">Sin operaciones</p>
               )}
             </div>
           </button>

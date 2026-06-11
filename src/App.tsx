@@ -14,6 +14,9 @@ import FinancesPage from './pages/FinancesPage'
 import DebtFormPage from './pages/DebtFormPage'
 import InstallmentFormPage from './pages/InstallmentFormPage'
 import InvestmentFormPage from './pages/InvestmentFormPage'
+import PortfolioAssetPage from './pages/PortfolioAssetPage'
+import PortfolioAssetFormPage from './pages/PortfolioAssetFormPage'
+import PortfolioTransactionFormPage from './pages/PortfolioTransactionFormPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -54,6 +57,11 @@ export default function App() {
             <Route path="/finances/installments/:id/edit" element={<InstallmentFormPage />} />
             <Route path="/finances/investments/new" element={<InvestmentFormPage />} />
             <Route path="/finances/investments/:id/edit" element={<InvestmentFormPage />} />
+            <Route path="/finances/portfolio/new" element={<PortfolioAssetFormPage />} />
+            <Route path="/finances/portfolio/:assetId/edit" element={<PortfolioAssetFormPage />} />
+            <Route path="/finances/portfolio/:assetId/transactions/new" element={<PortfolioTransactionFormPage />} />
+            <Route path="/finances/portfolio/:assetId/transactions/:txId/edit" element={<PortfolioTransactionFormPage />} />
+            <Route path="/finances/portfolio/:assetId" element={<PortfolioAssetPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
