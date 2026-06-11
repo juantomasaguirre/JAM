@@ -12,6 +12,7 @@ import ImportPage from './pages/ImportPage'
 import ImportHistoricalPage from './pages/ImportHistoricalPage'
 import FinancesPage from './pages/FinancesPage'
 import DebtFormPage from './pages/DebtFormPage'
+import InstallmentFormPage from './pages/InstallmentFormPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -48,6 +49,8 @@ export default function App() {
             <Route path="/finances" element={<FinancesPage />} />
             <Route path="/finances/debts/new" element={<DebtFormPage />} />
             <Route path="/finances/debts/:id/edit" element={<DebtFormPage />} />
+            <Route path="/finances/installments/new" element={<InstallmentFormPage />} />
+            <Route path="/finances/installments/:id/edit" element={<InstallmentFormPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
