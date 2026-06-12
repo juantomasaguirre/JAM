@@ -19,6 +19,7 @@ import PortfolioAssetFormPage from './pages/PortfolioAssetFormPage'
 import PortfolioTransactionFormPage from './pages/PortfolioTransactionFormPage'
 import RecurringPaymentsPage from './pages/RecurringPaymentsPage'
 import RecurringPaymentFormPage from './pages/RecurringPaymentFormPage'
+import PushPromptBanner from './components/PushPromptBanner'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -36,6 +37,8 @@ export default function App() {
   if (session === undefined) return null
 
   return (
+    <>
+      {session && <PushPromptBanner />}
     <BrowserRouter>
       <Routes>
         <Route
@@ -74,5 +77,6 @@ export default function App() {
         )}
       </Routes>
     </BrowserRouter>
+    </>
   )
 }

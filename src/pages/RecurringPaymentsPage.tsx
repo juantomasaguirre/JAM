@@ -9,7 +9,6 @@ interface RecurringPayment {
   id: string
   name: string
   due_day: number
-  is_active: boolean
 }
 
 export default function RecurringPaymentsPage() {
@@ -32,39 +31,77 @@ export default function RecurringPaymentsPage() {
 
   const [payments, setPayments] = useState<RecurringPayment[]>([])
   const [loading, setLoading] = useState(true)
+  // Maps recurring_payment_id -> check record id for the current month
+  const [checkedIds, setCheckedIds] = useState<Map<string, string>>(new Map())
   const [toggling, setToggling] = useState<string | null>(null)
+  const [householdId, setHouseholdId] = useState('')
+  const [currentUserId, setCurrentUserId] = useState('')
+
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
 
   useEffect(() => {
-    supabase
-      .from('recurring_payments')
-      .select('id, name, due_day, is_active')
-      .order('due_day')
-      .then(({ data }) => {
-        if (data) setPayments(data)
-        setLoading(false)
-      })
-  }, [])
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setCurrentUserId(user.id)
 
-  async function handleToggle(id: string, current: boolean) {
-    setToggling(id)
-    await supabase
-      .from('recurring_payments')
-      .update({ is_active: !current })
-      .eq('id', id)
-    setPayments((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, is_active: !current } : p)),
-    )
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('household_id')
+        .eq('id', user.id)
+        .single()
+      if (profile) setHouseholdId(profile.household_id)
+
+      const [paymentsResult, checksResult] = await Promise.all([
+        supabase.from('recurring_payments').select('id, name, due_day').order('due_day'),
+        supabase
+          .from('recurring_payment_checks')
+          .select('id, recurring_payment_id')
+          .eq('year', currentYear)
+          .eq('month', currentMonth),
+      ])
+
+      if (paymentsResult.data) setPayments(paymentsResult.data)
+      if (checksResult.data) {
+        const map = new Map<string, string>()
+        for (const c of checksResult.data as { id: string; recurring_payment_id: string }[]) {
+          map.set(c.recurring_payment_id, c.id)
+        }
+        setCheckedIds(map)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [currentYear, currentMonth])
+
+  async function handleToggleCheck(paymentId: string) {
+    if (toggling) return
+    setToggling(paymentId)
+    const checkId = checkedIds.get(paymentId)
+    if (checkId) {
+      await supabase.from('recurring_payment_checks').delete().eq('id', checkId)
+      setCheckedIds((prev) => { const next = new Map(prev); next.delete(paymentId); return next })
+    } else {
+      const { data } = await supabase
+        .from('recurring_payment_checks')
+        .insert({ recurring_payment_id: paymentId, household_id: householdId, year: currentYear, month: currentMonth, paid_by: currentUserId })
+        .select('id')
+        .single()
+      if (data) setCheckedIds((prev) => new Map(prev).set(paymentId, data.id))
+    }
     setToggling(null)
   }
 
-  const active = payments.filter((p) => p.is_active)
-  const inactive = payments.filter((p) => !p.is_active)
+  const checkedCount = checkedIds.size
+  const totalCount = payments.length
 
   return (
     <div className="min-h-screen bg-surface pb-16">
       <NavBar
         title="Gastos recurrentes"
-        backTo="/dashboard"
+        backTo="/"
         right={
           <button
             onClick={() => navigate('/gastos-recurrentes/new')}
@@ -76,7 +113,7 @@ export default function RecurringPaymentsPage() {
         }
       />
 
-      {/* Push notification section */}
+      {/* Push notification status */}
       {subStatus !== 'loading' && subStatus !== 'unavailable' && (
         <div className="mx-4 mt-4">
           {iosNotInstalled ? (
@@ -113,79 +150,50 @@ export default function RecurringPaymentsPage() {
           </button>
         </div>
       ) : (
-        <div>
-          {active.length > 0 && (
-            <PaymentSection
-              title="Activos"
-              items={active}
-              toggling={toggling}
-              onToggle={handleToggle}
-              onEdit={(id) => navigate(`/gastos-recurrentes/${id}/edit`)}
-            />
-          )}
-          {inactive.length > 0 && (
-            <PaymentSection
-              title="Desactivados"
-              items={inactive}
-              toggling={toggling}
-              onToggle={handleToggle}
-              onEdit={(id) => navigate(`/gastos-recurrentes/${id}/edit`)}
-              muted
-            />
-          )}
+        <div className="mt-4">
+          <div className="px-4 pb-2 flex justify-between items-center">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Este mes
+            </span>
+            <span className="text-xs text-gray-400">{checkedCount}/{totalCount} pagados</span>
+          </div>
+          {payments.map((p) => {
+            const checked = checkedIds.has(p.id)
+            return (
+              <div key={p.id} className="bg-card border-b border-sand px-4 py-3 flex items-center gap-3">
+                <button
+                  onClick={() => handleToggleCheck(p.id)}
+                  disabled={toggling === p.id}
+                  className="shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-50"
+                  style={
+                    checked
+                      ? { borderColor: '#16a34a', backgroundColor: '#16a34a' }
+                      : { borderColor: '#D1D5DB', backgroundColor: 'white' }
+                  }
+                  aria-label={checked ? 'Desmarcar como pagado' : 'Marcar como pagado'}
+                >
+                  {checked && (
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 8l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => navigate(`/gastos-recurrentes/${p.id}/edit`)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <p className={`text-sm font-medium transition-colors ${checked ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                    {p.name}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">día {p.due_day}</p>
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
 
       <BottomNav />
-    </div>
-  )
-}
-
-function PaymentSection({
-  title,
-  items,
-  toggling,
-  onToggle,
-  onEdit,
-  muted = false,
-}: {
-  title: string
-  items: RecurringPayment[]
-  toggling: string | null
-  onToggle: (id: string, current: boolean) => void
-  onEdit: (id: string) => void
-  muted?: boolean
-}) {
-  return (
-    <div className={muted ? 'opacity-50' : ''}>
-      <div className="px-4 py-2 bg-sand text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        {title}
-      </div>
-      {items.map((p) => (
-        <div
-          key={p.id}
-          className="bg-card border-b border-sand px-4 py-3 flex items-center justify-between"
-        >
-          <button
-            onClick={() => onEdit(p.id)}
-            className="flex-1 min-w-0 text-left"
-          >
-            <p className="text-sm font-medium text-gray-900">{p.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">día {p.due_day}</p>
-          </button>
-          <button
-            onClick={() => onToggle(p.id, p.is_active)}
-            disabled={toggling === p.id}
-            className={`ml-3 shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-              p.is_active
-                ? 'bg-primary/10 text-primary'
-                : 'bg-gray-100 text-gray-400'
-            } disabled:opacity-50`}
-          >
-            {p.is_active ? 'Activo' : 'Inactivo'}
-          </button>
-        </div>
-      ))}
     </div>
   )
 }

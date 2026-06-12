@@ -47,17 +47,6 @@ export default function HomePage() {
         </button>
 
         <button
-          onClick={() => navigate('/movements/new')}
-          className="w-full bg-primary rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:opacity-80 transition-opacity"
-        >
-          <span className="text-2xl">＋</span>
-          <div>
-            <p className="text-sm font-semibold text-white">Nuevo movimiento</p>
-            <p className="text-xs text-white/70 mt-0.5">Registrar un gasto o ingreso</p>
-          </div>
-        </button>
-
-        <button
           onClick={() => navigate('/dashboard')}
           className="w-full bg-card border border-border rounded-2xl px-5 py-4 flex items-center gap-4 text-left active:bg-sand transition-colors"
         >
@@ -89,6 +78,14 @@ export default function HomePage() {
           Cerrar sesión
         </button>
       </div>
+
+      <button
+        onClick={() => navigate('/movements/new')}
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-14 h-14 bg-primary rounded-full shadow-lg flex items-center justify-center active:opacity-80 transition-opacity"
+        aria-label="Nuevo movimiento"
+      >
+        <span className="text-white text-3xl font-light leading-none">+</span>
+      </button>
 
       <BottomNav />
     </div>

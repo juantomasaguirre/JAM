@@ -31,12 +31,6 @@ interface Profile {
   display_name: string
 }
 
-interface RecurringPayment {
-  id: string
-  name: string
-  due_day: number
-}
-
 const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 
@@ -98,11 +92,10 @@ export default function DashboardPage() {
   const [activeDebtCount, setActiveDebtCount] = useState(0)
   const [dashInstallments, setDashInstallments] = useState<{ installment_amount: number; currency: string; installment_count: number; first_due_date: string }[]>([])
   const [dashInvestments, setDashInvestments] = useState<{ current_value: number; currency: string }[]>([])
-  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([])
 
   useEffect(() => {
     async function loadAccumulated() {
-      const [sharedResult, rateResult, catsResult, profilesResult, userResult, debtsResult, installmentsResult, investmentsResult, recurringResult] = await Promise.all([
+      const [sharedResult, rateResult, catsResult, profilesResult, userResult, debtsResult, installmentsResult, investmentsResult] = await Promise.all([
         supabase
           .from('movements')
           .select('id, scope, amount, currency, paid_by')
@@ -123,7 +116,6 @@ export default function DashboardPage() {
         supabase.from('debts').select('id').gt('pending_amount', 0),
         supabase.from('installment_plans').select('installment_amount, currency, installment_count, first_due_date'),
         supabase.from('investments').select('current_value, currency').eq('is_active', true),
-        supabase.from('recurring_payments').select('id, name, due_day').eq('is_active', true).order('due_day'),
       ])
 
       if (sharedResult.data) setAllSharedMovements(sharedResult.data as unknown as AccumulatedMovement[])
@@ -143,7 +135,6 @@ export default function DashboardPage() {
       setActiveDebtCount(debtsResult.data?.length ?? 0)
       setDashInstallments(installmentsResult.data ?? [])
       setDashInvestments(investmentsResult.data ?? [])
-      setRecurringPayments(recurringResult.data ?? [])
       setAllLoading(false)
     }
     loadAccumulated()
@@ -196,19 +187,6 @@ export default function DashboardPage() {
   }
 
   const otherUser = profiles.find((p) => p.id !== currentUserId)
-
-  function getPaymentBadge(dueDay: number): 'Hoy' | 'Mañana' | null {
-    const today = new Date()
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    function effectiveDay(date: Date, day: number): number {
-      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-      return Math.min(day, lastDay)
-    }
-    if (effectiveDay(today, dueDay) === today.getDate()) return 'Hoy'
-    if (effectiveDay(tomorrow, dueDay) === tomorrow.getDate()) return 'Mañana'
-    return null
-  }
 
   // Finance summary — independent of selected month
   const activeDashInstallments = dashInstallments.filter((p) => {
@@ -403,47 +381,6 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Recurring payments */}
-        {recurringPayments.length > 0 && (
-          <div className="bg-card rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Gastos recurrentes
-              </p>
-              <button
-                onClick={() => navigate('/gastos-recurrentes')}
-                className="text-xs text-primary font-medium"
-              >
-                Gestionar →
-              </button>
-            </div>
-            <div className="divide-y divide-sand">
-              {recurringPayments.map((p) => {
-                const badge = getPaymentBadge(p.due_day)
-                return (
-                  <div key={p.id} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {badge && (
-                        <span
-                          className={`shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded-full ${
-                            badge === 'Hoy'
-                              ? 'text-orange-700 bg-orange-100'
-                              : 'text-yellow-700 bg-yellow-100'
-                          }`}
-                        >
-                          {badge}
-                        </span>
-                      )}
-                      <span className="text-sm text-gray-900 truncate">{p.name}</span>
-                    </div>
-                    <span className="text-xs text-gray-400 shrink-0 ml-2">día {p.due_day}</span>
-                  </div>
-                )
-              })}
-            </div>
           </div>
         )}
 

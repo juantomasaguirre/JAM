@@ -10,7 +10,6 @@ export default function RecurringPaymentFormPage() {
 
   const [name, setName] = useState('')
   const [dueDay, setDueDay] = useState('')
-  const [isActive, setIsActive] = useState(true)
 
   const [currentUserId, setCurrentUserId] = useState('')
   const [householdId, setHouseholdId] = useState('')
@@ -42,7 +41,6 @@ export default function RecurringPaymentFormPage() {
         if (!data) { navigate('/gastos-recurrentes'); return }
         setName(data.name)
         setDueDay(String(data.due_day))
-        setIsActive(data.is_active)
         setLoading(false)
       })
   }, [id, navigate])
@@ -63,7 +61,7 @@ export default function RecurringPaymentFormPage() {
     if (isEdit) {
       const { error: updateError } = await supabase
         .from('recurring_payments')
-        .update({ name: name.trim(), due_day: parsedDay, is_active: isActive })
+        .update({ name: name.trim(), due_day: parsedDay, is_active: true })
         .eq('id', id!)
       if (updateError) { setError(updateError.message); setSaving(false); return }
     } else {
@@ -139,20 +137,6 @@ export default function RecurringPaymentFormPage() {
             Para meses cortos, días 29-31 se notifican el último día del mes.
           </p>
         </div>
-
-        {isEdit && (
-          <button
-            type="button"
-            onClick={() => setIsActive(!isActive)}
-            className={`w-full py-3 rounded-xl text-sm font-semibold border transition-colors ${
-              isActive
-                ? 'bg-card border-border text-gray-500 hover:bg-sand'
-                : 'bg-gray-800 text-white border-gray-800'
-            }`}
-          >
-            {isActive ? 'Desactivar recordatorio' : 'Reactivar recordatorio'}
-          </button>
-        )}
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
