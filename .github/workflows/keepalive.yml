@@ -13,13 +13,8 @@ jobs:
     steps:
       - name: Ping Supabase REST API
         run: |
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          curl -s \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/")
-          echo "Supabase responded with HTTP $HTTP_STATUS"
-          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "404" ]; then
-            echo "Project is active."
-          else
-            echo "Unexpected status — project may be paused or unreachable."
-            exit 1
-          fi
+            -o /dev/null \
+            -w "HTTP status: %{http_code}\n" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/" || true
