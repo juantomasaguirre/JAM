@@ -1,0 +1,25 @@
+name: Supabase keepalive
+
+# Runs every 5 days to prevent Supabase free tier from pausing due to inactivity.
+# Supabase pauses projects after 7 days without API activity.
+on:
+  schedule:
+    - cron: '0 10 */5 * *'  # days 1, 6, 11, 16, 21, 26 of each month at 10:00 UTC
+  workflow_dispatch:         # allow manual trigger from GitHub UI
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/")
+          echo "Supabase responded with HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "404" ]; then
+            echo "Project is active."
+          else
+            echo "Unexpected status — project may be paused or unreachable."
+            exit 1
+          fi
