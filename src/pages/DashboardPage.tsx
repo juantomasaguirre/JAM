@@ -92,10 +92,11 @@ export default function DashboardPage() {
   const [activeDebtCount, setActiveDebtCount] = useState(0)
   const [dashInstallments, setDashInstallments] = useState<{ installment_amount: number; currency: string; installment_count: number; first_due_date: string }[]>([])
   const [dashInvestments, setDashInvestments] = useState<{ current_value: number; currency: string }[]>([])
+  const [budgetByCatId, setBudgetByCatId] = useState<Map<string, number>>(new Map())
 
   useEffect(() => {
     async function loadAccumulated() {
-      const [sharedResult, rateResult, catsResult, profilesResult, userResult, debtsResult, installmentsResult, investmentsResult] = await Promise.all([
+      const [sharedResult, rateResult, catsResult, profilesResult, userResult, debtsResult, installmentsResult, investmentsResult, budgetsResult] = await Promise.all([
         supabase
           .from('movements')
           .select('id, scope, amount, currency, paid_by')
@@ -116,6 +117,7 @@ export default function DashboardPage() {
         supabase.from('debts').select('id').gt('pending_amount', 0),
         supabase.from('installment_plans').select('installment_amount, currency, installment_count, first_due_date'),
         supabase.from('investments').select('current_value, currency').eq('is_active', true),
+        supabase.from('category_budgets').select('category_id, monthly_limit'),
       ])
 
       if (sharedResult.data) setAllSharedMovements(sharedResult.data as unknown as AccumulatedMovement[])
@@ -135,6 +137,11 @@ export default function DashboardPage() {
       setActiveDebtCount(debtsResult.data?.length ?? 0)
       setDashInstallments(installmentsResult.data ?? [])
       setDashInvestments(investmentsResult.data ?? [])
+      const budgetMap = new Map<string, number>()
+      for (const b of (budgetsResult.data ?? []) as { category_id: string; monthly_limit: number }[]) {
+        budgetMap.set(b.category_id, b.monthly_limit)
+      }
+      setBudgetByCatId(budgetMap)
       setAllLoading(false)
     }
     loadAccumulated()
@@ -456,6 +463,11 @@ export default function DashboardPage() {
                     {categoryData.map(({ name, value, id }) => {
                       const excluded = excludedCategories.has(name)
                       const color = getCategoryColor(name)
+                      const budgetArs = id ? budgetByCatId.get(id) : undefined
+                      const budgetInDisplay = budgetArs != null
+                        ? (displayCurrency === 'ARS' ? budgetArs : (avgMepRate ? budgetArs / avgMepRate : null))
+                        : null
+                      const exceeded = budgetInDisplay != null && value > budgetInDisplay
                       return (
                         <div key={name} className="flex items-start gap-2">
                           <button
@@ -481,14 +493,19 @@ export default function DashboardPage() {
                               <span className={`font-medium truncate mr-2 transition-colors ${excluded ? 'text-gray-300' : 'text-gray-700'}`}>
                                 {name}
                               </span>
-                              <span className={`whitespace-nowrap ${excluded ? 'text-gray-300' : 'text-gray-500'}`}>
-                                {formatAmount(value, displayCurrency)}
-                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {exceeded && !excluded && (
+                                  <span className="text-red-500 font-bold leading-none">!</span>
+                                )}
+                                <span className={`whitespace-nowrap ${excluded ? 'text-gray-300' : exceeded && !excluded ? 'text-red-500 font-semibold' : 'text-gray-500'}`}>
+                                  {formatAmount(value, displayCurrency)}
+                                </span>
+                              </div>
                             </div>
                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                               <div
                                 className="h-full rounded-full transition-all"
-                                style={{ width: `${(value / maxCatValue) * 100}%`, backgroundColor: excluded ? '#D1D5DB' : color }}
+                                style={{ width: `${(value / maxCatValue) * 100}%`, backgroundColor: excluded ? '#D1D5DB' : exceeded ? '#ef4444' : color }}
                               />
                             </div>
                           </button>

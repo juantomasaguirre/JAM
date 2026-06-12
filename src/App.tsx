@@ -20,6 +20,7 @@ import PortfolioTransactionFormPage from './pages/PortfolioTransactionFormPage'
 import RecurringPaymentsPage from './pages/RecurringPaymentsPage'
 import RecurringPaymentFormPage from './pages/RecurringPaymentFormPage'
 import SettingsPage from './pages/SettingsPage'
+import BudgetPage from './pages/BudgetPage'
 import PushPromptBanner from './components/PushPromptBanner'
 
 export default function App() {
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/gastos-recurrentes/new" element={<RecurringPaymentFormPage />} />
             <Route path="/gastos-recurrentes/:id/edit" element={<RecurringPaymentFormPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/budgets" element={<BudgetPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (

@@ -19,6 +19,60 @@ function localToday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+async function checkAndAlertBudget(
+  householdId: string,
+  catId: string,
+  catName: string,
+  newAmount: number,
+  newCurrency: 'ARS' | 'USD',
+  occurredOn: string,
+) {
+  const now = new Date()
+  const movDate = new Date(occurredOn + 'T12:00:00')
+  if (movDate.getFullYear() !== now.getFullYear() || movDate.getMonth() !== now.getMonth()) return
+
+  const [budgetResult, rateResult] = await Promise.all([
+    supabase.from('category_budgets').select('monthly_limit').eq('household_id', householdId).eq('category_id', catId).single(),
+    supabase.from('fx_rates').select('sell').eq('dollar_type', 'mep').order('rate_date', { ascending: false }).limit(1).single(),
+  ])
+
+  if (!budgetResult.data) return
+  const budgetArs = budgetResult.data.monthly_limit
+  const mepRate = rateResult.data?.sell ?? null
+  const toArs = (a: number, c: 'ARS' | 'USD') => c === 'ARS' ? a : (mepRate ? a * mepRate : a)
+
+  const newAmountArs = toArs(newAmount, newCurrency)
+
+  const dateFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const dateTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`
+
+  const { data: movs } = await supabase
+    .from('movements')
+    .select('amount, currency')
+    .eq('category_id', catId)
+    .eq('kind', 'expense')
+    .gte('occurred_on', dateFrom)
+    .lte('occurred_on', dateTo)
+
+  if (!movs) return
+
+  const totalArs = movs.reduce((sum, m) => sum + toArs(m.amount, m.currency as 'ARS' | 'USD'), 0)
+  const totalBefore = totalArs - newAmountArs
+
+  // Only notify when this transaction crossed the threshold
+  if (totalBefore >= budgetArs || totalArs < budgetArs) return
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+  await fetch(`${supabaseUrl}/functions/v1/send-budget-alert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ category_name: catName }),
+  })
+}
+
 export default function MovementFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -157,6 +211,13 @@ export default function MovementFormPage() {
       })
 
       if (insertError) { setError(insertError.message); setSaving(false); return }
+
+      if (kind === 'expense' && categoryId) {
+        const cat = categories.find((c) => c.id === categoryId)
+        if (cat) {
+          checkAndAlertBudget(profile.household_id, categoryId, cat.name, parsedAmount, currency, occurredOn).catch(() => {})
+        }
+      }
     }
 
     navigate('/movements')
