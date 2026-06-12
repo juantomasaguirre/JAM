@@ -21,10 +21,6 @@ export default function HomePage() {
     fetchProfile()
   }, [])
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-  }
-
   return (
     <div className="min-h-screen bg-surface flex flex-col pb-16">
       {/* Header */}
@@ -72,10 +68,10 @@ export default function HomePage() {
       {/* Footer */}
       <div className="px-6 pb-8">
         <button
-          onClick={handleLogout}
+          onClick={() => navigate('/settings')}
           className="text-xs text-gray-300 hover:text-gray-500 transition-colors"
         >
-          Cerrar sesión
+          Ajustes
         </button>
       </div>
 
