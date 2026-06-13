@@ -291,6 +291,19 @@ export default function ImportPage() {
               Usar el importador de historial →
             </button>
           </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+            <p className="text-xs font-semibold text-blue-800">
+              ¿Tenés un resumen de tarjeta?
+            </p>
+            <p className="text-xs text-blue-600 mt-0.5">Galicia VISA — más bancos próximamente</p>
+            <button
+              onClick={() => navigate('/import/bank')}
+              className="text-xs text-blue-700 underline mt-1"
+            >
+              Importar resumen bancario →
+            </button>
+          </div>
         </div>
       </div>
     )

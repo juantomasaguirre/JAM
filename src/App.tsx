@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage'
 import CategoryEvolutionPage from './pages/CategoryEvolutionPage'
 import ImportPage from './pages/ImportPage'
 import ImportHistoricalPage from './pages/ImportHistoricalPage'
+import BankImportPage from './pages/BankImportPage'
 import FinancesPage from './pages/FinancesPage'
 import DebtFormPage from './pages/DebtFormPage'
 import InstallmentFormPage from './pages/InstallmentFormPage'
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/dashboard/categories/:id" element={<CategoryEvolutionPage />} />
             <Route path="/import" element={<ImportPage />} />
             <Route path="/import/historical" element={<ImportHistoricalPage />} />
+            <Route path="/import/bank" element={<BankImportPage />} />
             <Route path="/finances" element={<FinancesPage />} />
             <Route path="/finances/debts/new" element={<DebtFormPage />} />
             <Route path="/finances/debts/:id/edit" element={<DebtFormPage />} />

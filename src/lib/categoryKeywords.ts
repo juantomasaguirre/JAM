@@ -52,6 +52,12 @@ const EXPENSE_KEYWORDS: [string[], string][] = [
       'bono', 'accion', 'acción'],
     'Inversiones',
   ],
+  [
+    ['intereses financiacion', 'db iva', 'com mant', 'comision', 'comisión',
+      'mantenimiento', 'renovacion tarjeta', 'renovación tarjeta', 'impuesto',
+      'percepcion', 'percepción', 'sellado', 'iibb'],
+    'Comisiones e impuestos',
+  ],
 ]
 
 const INCOME_KEYWORDS: [string[], string][] = [
