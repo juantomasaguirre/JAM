@@ -80,7 +80,7 @@ export default function MovementFormPage() {
 
   // Form state
   const [kind, setKind] = useState<'expense' | 'income'>('expense')
-  const [scope, setScope] = useState<'individual' | 'shared' | 'loan'>('individual')
+  const [scope, setScope] = useState<'individual' | 'shared' | 'loan'>('shared')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState<'ARS' | 'USD'>('ARS')
@@ -102,17 +102,20 @@ export default function MovementFormPage() {
 
   useEffect(() => {
     async function load() {
-      const [catsResult, profilesResult] = await Promise.all([
+      const [catsResult, profilesResult, { data: { user } }] = await Promise.all([
         supabase
           .from('categories')
           .select('id, name, kind')
           .eq('is_archived', false)
           .order('name'),
         supabase.from('profiles').select('id, display_name'),
+        supabase.auth.getUser(),
       ])
 
       if (catsResult.data) setCategories(catsResult.data)
       if (profilesResult.data) setProfiles(profilesResult.data)
+
+      if (!id && user) setPaidBy(user.id)
 
       if (id) {
         const { data } = await supabase
